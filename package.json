@@ -1,0 +1,11 @@
+{
+	"name": "com.unity.toongraphics",
+	"displayName":"Toon Graphics",
+	"version": "0.1.0",
+	"unity": "2022.2",
+	"description": "Toon Graphics Package",
+	"dependencies":
+	{
+	 "com.unity.render-pipelines.core": "10.0.0"
+	}
+}
