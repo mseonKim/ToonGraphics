@@ -13,6 +13,8 @@ float4 _CharShadowOffset0;
 float4 _CharShadowOffset1;
 float4 _CharShadowmapSize;
 float _CharShadowStepOffset;
+TEXTURE2D(_TransparentShadowAtlas);
+// SAMPLER(sampler_TransparentShadowAtlas);
 
 float3 ApplyShadowBias(float3 positionWS, float3 lightDirection)
 {
@@ -38,6 +40,12 @@ float4 CharShadowObjectToHClip(float3 positionOS)
     positionWS = ApplyShadowBias(positionWS, _MainLightPosition.xyz);
     return CharShadowWorldToHClip(positionWS);
 }
+float4 CharShadowObjectToHClipWithoutBias(float3 positionOS)
+{
+    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0));
+    return CharShadowWorldToHClip(positionWS);
+}
+
 
 half SampleCharacterShadowmap(float2 uv, float z)
 {
@@ -74,6 +82,18 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z)
 
     return 1.0 - step(attenuation, _CharShadowStepOffset);
     // return 0;
+}
+
+half SampleTransparentShadowmap(float2 uv)
+{
+    // Do Saturate since texture could have value more than 1
+    half atten = saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).r);
+    return atten;
+}
+
+half GetCharacterAndTransparentShadowmap(float2 uv, float z)
+{
+    return max(SampleCharacterShadowmapFiltered(uv, z), SampleTransparentShadowmap(uv));
 }
 
 #endif

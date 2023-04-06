@@ -46,6 +46,7 @@ public class CharacterShadowMap : ScriptableRendererFeature
 
     private class CharacterShadowPass : ScriptableRenderPass
     {
+        /* Static Variables */
         private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("CharacterDepth");
         private static int  s_CharShadowAtlasId = Shader.PropertyToID("_CharShadowAtlas");
         private static int  s_CharShadowBias = Shader.PropertyToID("_CharShadowBias");
@@ -55,10 +56,12 @@ public class CharacterShadowMap : ScriptableRendererFeature
         private static int  s_ShadowOffset1Id = Shader.PropertyToID("_CharShadowOffset1");
         private static int  s_ShadowMapSize = Shader.PropertyToID("_CharShadowmapSize");
         private static int  s_ShadowStepOffset = Shader.PropertyToID("_CharShadowStepOffset");
-        private static int  s_atlasSize = 4096;
+        private static int  s_atlasSize = 2048;
 
 
-        private RTHandle m_Destination;
+        /* Member Variables */
+        private RTHandle m_CharShadowRT;
+        private RTHandle m_TransparentShadowRT;
         private ShaderTagId shaderTagId { get; set; } = k_ShaderTagId;
         private ProfilingSampler m_ProfilingSampler;
         private PassData m_PassData;
@@ -80,7 +83,7 @@ public class CharacterShadowMap : ScriptableRendererFeature
 
         public void Dispose()
         {
-            m_Destination?.Release();
+            m_CharShadowRT?.Release();
         }
 
         public void Setup(string featureName, in RenderingData renderingData, float bias, float stepOffset)
@@ -92,16 +95,14 @@ public class CharacterShadowMap : ScriptableRendererFeature
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            // TODO: Create RT & bind
             // var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.RGB111110Float, 0);
             var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.Shadowmap, 32);
             // RTHandles.Alloc(descriptor, FilterMode.Point, name:"_CharShadowAtlas");
-            RenderingUtils.ReAllocateIfNeeded(ref m_Destination, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
-            cmd.SetGlobalTexture(s_CharShadowAtlasId, m_Destination.nameID);
+            RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
+            cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
 
-            ConfigureTarget(m_Destination);
+            ConfigureTarget(m_CharShadowRT);
             ConfigureClear(ClearFlag.All, Color.black);
-            m_PassData.targetHandle = m_Destination;
         }
 
         // Cleanup any allocated resources that were created during the execution of this render pass.
@@ -116,10 +117,10 @@ public class CharacterShadowMap : ScriptableRendererFeature
             m_PassData.filteringSettings = m_FilteringSettings;
             m_PassData.profilingSampler = m_ProfilingSampler;
 
-            ExecutePass(context, m_PassData, ref renderingData);
+            ExecuteCharShadowPass(context, m_PassData, ref renderingData);
         }
 
-        private static void ExecutePass(ScriptableRenderContext context, PassData passData, ref RenderingData renderingData)
+        private static void ExecuteCharShadowPass(ScriptableRenderContext context, PassData passData, ref RenderingData renderingData)
         {
             var cmd = CommandBufferPool.Get();
             var filteringSettings = passData.filteringSettings;
@@ -156,14 +157,13 @@ public class CharacterShadowMap : ScriptableRendererFeature
 
                 context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
             }
-            // cmd.SetGlobalTexture(s_CharShadowAtlasId, passData.targetHandle.nameID);
+
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
         }
 
         private class PassData
         {
-            public RTHandle targetHandle;
             public ShaderTagId shaderTagId;
             public FilteringSettings filteringSettings;
             public ProfilingSampler profilingSampler;
