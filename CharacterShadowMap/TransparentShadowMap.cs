@@ -1,8 +1,13 @@
+/// NOTE)
+/// This feature should be used only for character's cloth.
+/// Otherwise, the shadow will cast to far object as well.
+
 /// How to use
 /// 0. Add "CharacterShadowMap RendererFeature first. (Required)
 ///    This should be used with above RendererFeature. Otherwise, it will not be running.
 /// 1. Add pass in your shader to use 'TransparentShadowDepthPass.hlsl' with "TransparentDepth" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]
+ * NOTE) We assume that the shader use "_MainTex" and "_BaseColor", "_ClippingMask" properties.
  * Pass
  *   {
  *       Name "TransparentDepth"
@@ -75,7 +80,7 @@ public class TransparentShadowMap : ScriptableRendererFeature
         private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
         private static int  s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
         private static int  s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
-        private static int  s_atlasSize = 2048;
+        private static int  s_atlasSize = 4096;
 
 
         /* Member Variables */
@@ -110,7 +115,7 @@ public class TransparentShadowMap : ScriptableRendererFeature
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.R16);
-            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
+            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Trilinear, name:"_TransparentShadowAtlas");
             cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
             ConfigureTarget(m_TransparentShadowRT);
             ConfigureClear(ClearFlag.All, Color.black);

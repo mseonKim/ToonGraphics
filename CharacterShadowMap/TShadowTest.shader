@@ -3,6 +3,7 @@ Shader "Unlit/TShadowTest"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+        _ClippingMask ("Texture", 2D) = "white" {}
         _BaseColor ("Color", Color) = (1,1,1,1)
     }
     SubShader
@@ -77,6 +78,7 @@ Shader "Unlit/TShadowTest"
             #pragma prefer_hlslcc gles
             #pragma exclude_renderers d3d11_9x
             #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            #pragma shader_feature_local _ALPHATEST_ON
 
             #pragma vertex TransparentShadowVert
             #pragma fragment TransparentShadowFragment
