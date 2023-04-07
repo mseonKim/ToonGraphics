@@ -1,8 +1,3 @@
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-
-
 /// How to use
 /// 1. Create "CharacterShadow" Tag and set camera tag as "CharacterShadow"
 /// 2. Create camera and set rotation based on main directional light
@@ -10,6 +5,38 @@ using UnityEngine.Rendering.Universal;
 /// 4. Set "Body - Transposer | Binding Mode = Lock To Target On Assign"
 ///    & Set "Follow Offset" to adjust camera position
 /// 5. Set FOV
+/// 6. Add pass in your shader to use 'CharacterShadowDepthPass.hlsl' with "CharacterDepth" LightMode. (See below example)
+/* [Pass Example - Unity Toon Shader]
+ * Pass
+ *   {
+ *       Name "CharacterDepth"
+ *       Tags{"LightMode" = "CharacterDepth"}
+ *
+ *       ZWrite On
+ *       ZTest LEqual
+ *       Cull Off
+ *
+ *       HLSLPROGRAM
+ *       #pragma target 2.0
+ *   
+ *       // Required to compile gles 2.0 with standard srp library
+ *       #pragma prefer_hlslcc gles
+ *       #pragma exclude_renderers d3d11_9x
+ *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *
+ *       #pragma vertex CharShadowVertex
+ *       #pragma fragment CharShadowFragment
+ *
+ *       #include "../../UniversalRP/Shaders/UniversalToonInput.hlsl"
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/CharacterShadowDepthPass.hlsl"
+ *       ENDHLSL
+ *   }
+ */
+
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
 public class CharacterShadowMap : ScriptableRendererFeature
 {
     CharacterShadowPass m_Pass;

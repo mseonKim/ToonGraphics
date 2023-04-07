@@ -1,13 +1,45 @@
+/// How to use
+/// 0. Add "CharacterShadowMap RendererFeature first. (Required)
+///    This should be used with above RendererFeature. Otherwise, it will not be running.
+/// 1. Add pass in your shader to use 'TransparentShadowDepthPass.hlsl' with "TransparentDepth" LightMode. (See below example)
+/* [Pass Example - Unity Toon Shader]
+ * Pass
+ *   {
+ *       Name "TransparentDepth"
+ *       Tags{"LightMode" = "TransparentDepth"}
+ *
+ *       ZWrite Off
+ *       ZTest Off
+ *       Cull Off
+ *       Blend One One
+ *
+ *       HLSLPROGRAM
+ *       #pragma target 2.0
+ *   
+ *       // Required to compile gles 2.0 with standard srp library
+ *       #pragma prefer_hlslcc gles
+ *       #pragma exclude_renderers d3d11_9x
+ *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *
+ *       #pragma vertex TransparentShadowVert
+ *       #pragma fragment TransparentShadowFragment
+ *
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowDepthPass.hlsl"
+ *       ENDHLSL
+ *   }
+ */
+
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-
-/// TODO: How to use
 public class TransparentShadowMap : ScriptableRendererFeature
 {
     TransparentShadowPass m_Pass;
     public static Camera lightCamera;
+    
+    // Note) the RenderPassEvent is set as BeforeRenderingOpaques.
+    // It means this RendererFeature should be executed after 'CharacterShadowMap' Feature which is set as BeforeRenderingPrePasses.
     public RenderPassEvent injectionPoint = RenderPassEvent.BeforeRenderingOpaques;
     public ScriptableRenderPassInput requirements = ScriptableRenderPassInput.None;
 
