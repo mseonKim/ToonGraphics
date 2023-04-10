@@ -1,17 +1,43 @@
 /// NOTE)
 /// This feature should be used only for character's cloth.
 /// Otherwise, the shadow will cast to far object as well.
+/// Limitations: Not will behave natural if more than 2 transparent clothes overlapped.
 
 /// How to use
 /// 0. Add "CharacterShadowMap RendererFeature first. (Required)
 ///    This should be used with above RendererFeature. Otherwise, it will not be running.
-/// 1. Add pass in your shader to use 'TransparentShadowDepthPass.hlsl' with "TransparentDepth" LightMode. (See below example)
+/// 1. Add pass in your shader to use 'TransparentShadowDepthPass.hlsl' and 'TransparentShadowAlphaSumPass'
+///    with "TransparentDepth" and "TransparentAlphaSum" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]
  * NOTE) We assume that the shader use "_MainTex" and "_BaseColor", "_ClippingMask" properties.
- * Pass
+ *   Pass
  *   {
  *       Name "TransparentDepth"
  *       Tags{"LightMode" = "TransparentDepth"}
+ *
+ *       ZWrite Off
+ *       ZTest Off
+ *       Cull Off
+ *       Blend One One
+ *       BlendOp Max
+ *
+ *       HLSLPROGRAM
+ *       #pragma target 2.0
+ *   
+ *       #pragma prefer_hlslcc gles
+ *       #pragma exclude_renderers d3d11_9x
+ *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *
+ *       #pragma vertex TransparentShadowVert
+ *       #pragma fragment TransparentShadowFragment
+ *
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowDepthPass.hlsl"
+ *       ENDHLSL
+ *   }
+ *   Pass
+ *   {
+ *       Name "TransparentAlphaSum"
+ *       Tags{"LightMode" = "TransparentAlphaSum"}
  *
  *       ZWrite Off
  *       ZTest Off
@@ -21,15 +47,15 @@
  *       HLSLPROGRAM
  *       #pragma target 2.0
  *   
- *       // Required to compile gles 2.0 with standard srp library
  *       #pragma prefer_hlslcc gles
  *       #pragma exclude_renderers d3d11_9x
  *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *       #pragma shader_feature_local _ALPHATEST_ON
  *
  *       #pragma vertex TransparentShadowVert
  *       #pragma fragment TransparentShadowFragment
  *
- *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowDepthPass.hlsl"
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowAlphaSumPass.hlsl"
  *       ENDHLSL
  *   }
  */
@@ -76,7 +102,10 @@ public class TransparentShadowMap : ScriptableRendererFeature
     private class TransparentShadowPass : ScriptableRenderPass
     {
         /* Static Variables */
-        private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentDepth");
+        private static readonly ShaderTagId[] k_ShaderTagIds = {
+            new ShaderTagId("TransparentDepth"),
+            new ShaderTagId("TransparentAlphaSum")
+        };
         private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
         private static int  s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
         private static int  s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
@@ -84,7 +113,7 @@ public class TransparentShadowMap : ScriptableRendererFeature
 
 
         /* Member Variables */
-        private RTHandle m_TransparentShadowRT;
+        private RTHandle m_TransparentShadowRT; // R: Depth, G : Alpha Sum
         private ProfilingSampler m_ProfilingSampler;
         private PassData m_PassData;
 
@@ -114,7 +143,8 @@ public class TransparentShadowMap : ScriptableRendererFeature
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.R16);
+            // R: Depth, G : Alpha Sum
+            var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.RG32);
             RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Trilinear, name:"_TransparentShadowAtlas");
             cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
             ConfigureTarget(m_TransparentShadowRT);
@@ -129,7 +159,7 @@ public class TransparentShadowMap : ScriptableRendererFeature
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            m_PassData.shaderTagId = k_ShaderTagId;
+            m_PassData.shaderTagIds = k_ShaderTagIds;
             m_PassData.filteringSettings = m_FilteringSettings;
             m_PassData.profilingSampler = m_ProfilingSampler;
 
@@ -146,12 +176,13 @@ public class TransparentShadowMap : ScriptableRendererFeature
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
-                // cmd.SetGlobalMatrix(s_ViewMatrixId, passData.viewM);
-                // cmd.SetGlobalMatrix(s_ProjMatrixId, passData.projectM);
-
-                var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
+                // Depth
+                var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagIds[0], ref renderingData, SortingCriteria.CommonTransparent);
                 drawSettings.perObjectData = PerObjectData.None;
+                context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
 
+                // Alpha Sum
+                drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagIds[1], ref renderingData, SortingCriteria.CommonTransparent);
                 context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
             }
 
@@ -161,7 +192,7 @@ public class TransparentShadowMap : ScriptableRendererFeature
 
         private class PassData
         {
-            public ShaderTagId shaderTagId;
+            public ShaderTagId[] shaderTagIds;
             public FilteringSettings filteringSettings;
             public ProfilingSampler profilingSampler;
             public Matrix4x4 viewM;

@@ -70,6 +70,7 @@ Shader "Unlit/TShadowTest"
             ZTest Off
             Cull Off
             Blend One One
+            BlendOp Max
 
             HLSLPROGRAM
             #pragma target 2.0
@@ -84,6 +85,32 @@ Shader "Unlit/TShadowTest"
             #pragma fragment TransparentShadowFragment
 
             #include "TransparentShadowDepthPass.hlsl"
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "TransparentAlphaSum"
+            Tags{"LightMode" = "TransparentAlphaSum"}
+
+            ZWrite Off
+            ZTest Off
+            Cull Off
+            Blend One One
+
+            HLSLPROGRAM
+            #pragma target 2.0
+	    
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x
+            #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            #pragma shader_feature_local _ALPHATEST_ON
+
+            #pragma vertex TransparentShadowVert
+            #pragma fragment TransparentShadowFragment
+
+            #include "TransparentShadowAlphaSumPass.hlsl"
             ENDHLSL
         }
     }
