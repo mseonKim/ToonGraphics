@@ -3,16 +3,18 @@ Shader "Unlit/TShadowTest"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _ClippingMask ("Texture", 2D) = "white" {}
+        _ClippingMask ("ClippingMask", 2D) = "white" {}
         _BaseColor ("Color", Color) = (1,1,1,1)
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Trasparent" }
         LOD 100
 
         Pass
         {
+            ZWrite Off
+            Cull Off
             Blend SrcAlpha OneMinusSrcAlpha
 
             CGPROGRAM
@@ -63,14 +65,14 @@ Shader "Unlit/TShadowTest"
 
         Pass
         {
-            Name "TransparentDepth"
-            Tags{"LightMode" = "TransparentDepth"}
+            Name "TransparentShadow"
+            Tags{"LightMode" = "TransparentShadow"}
 
             ZWrite Off
             ZTest Off
             Cull Off
-            Blend One One
-            BlendOp Max
+            Blend One One, One One
+            BlendOp Max, Add
 
             HLSLPROGRAM
             #pragma target 2.0
@@ -84,33 +86,7 @@ Shader "Unlit/TShadowTest"
             #pragma vertex TransparentShadowVert
             #pragma fragment TransparentShadowFragment
 
-            #include "TransparentShadowDepthPass.hlsl"
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "TransparentAlphaSum"
-            Tags{"LightMode" = "TransparentAlphaSum"}
-
-            ZWrite Off
-            ZTest Off
-            Cull Off
-            Blend One One
-
-            HLSLPROGRAM
-            #pragma target 2.0
-	    
-            // Required to compile gles 2.0 with standard srp library
-            #pragma prefer_hlslcc gles
-            #pragma exclude_renderers d3d11_9x
-            #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
-            #pragma shader_feature_local _ALPHATEST_ON
-
-            #pragma vertex TransparentShadowVert
-            #pragma fragment TransparentShadowFragment
-
-            #include "TransparentShadowAlphaSumPass.hlsl"
+            #include "TransparentShadowPass.hlsl"
             ENDHLSL
         }
     }

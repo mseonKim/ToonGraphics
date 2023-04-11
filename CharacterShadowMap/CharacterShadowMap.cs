@@ -125,7 +125,7 @@ public class CharacterShadowMap : ScriptableRendererFeature
             // var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.RGB111110Float, 0);
             var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.Shadowmap, 32);
             // RTHandles.Alloc(descriptor, FilterMode.Point, name:"_CharShadowAtlas");
-            RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Trilinear, name:"_CharShadowAtlas");
+            RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
             cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
 
             ConfigureTarget(m_CharShadowRT);

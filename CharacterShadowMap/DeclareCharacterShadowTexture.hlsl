@@ -112,7 +112,7 @@ half GetTransparentShadow(float2 uv, float z, float opacity)
 {
     half hidden = SampleTransparentShadowmapFiltered(uv, z);
     // Saturate since texture could have value more than 1
-    half atten = saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).g - opacity);  // Total alpha sum - current pixel's alpha
+    half atten = saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).a - opacity);  // Total alpha sum - current pixel's alpha
     return min(hidden, atten);
 }
 
