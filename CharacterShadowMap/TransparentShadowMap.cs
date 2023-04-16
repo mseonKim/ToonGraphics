@@ -41,135 +41,135 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-public class TransparentShadowMap : ScriptableRendererFeature
+namespace ToonGraphics
 {
-    TransparentShadowPass m_Pass;
-    public static Camera lightCamera;
-    
-    // Note) the RenderPassEvent is set as BeforeRenderingOpaques.
-    // It means this RendererFeature should be executed after 'CharacterShadowMap' Feature which is set as BeforeRenderingPrePasses.
-    public RenderPassEvent injectionPoint = RenderPassEvent.BeforeRenderingOpaques;
-    public ScriptableRenderPassInput requirements = ScriptableRenderPassInput.None;
-
-    /// <inheritdoc/>
-    public override void Create()
+    public class TransparentShadowMap : ScriptableRendererFeature
     {
-        m_Pass = new TransparentShadowPass(injectionPoint, RenderQueueRange.transparent, lightCamera);
-        m_Pass.ConfigureInput(requirements);
-        if (lightCamera == null)
+        TransparentShadowPass m_Pass;
+        public static Camera lightCamera;
+        
+        // Note) the RenderPassEvent is set as BeforeRenderingOpaques.
+        // It means this RendererFeature should be executed after 'CharacterShadowMap' Feature which is set as BeforeRenderingPrePasses.
+        public RenderPassEvent injectionPoint = RenderPassEvent.BeforeRenderingOpaques;
+        public ScriptableRenderPassInput requirements = ScriptableRenderPassInput.None;
+
+        /// <inheritdoc/>
+        public override void Create()
         {
-            lightCamera = GameObject.FindGameObjectWithTag("CharacterShadow")?.GetComponent<Camera>();
-        }
-    }
-
-    // Here you can inject one or multiple render passes in the renderer.
-    // This method is called when setting up the renderer once per-camera.
-    public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
-    {
-        m_Pass.Setup("TransparentShadowMapRendererFeature", renderingData);
-        renderer.EnqueuePass(m_Pass);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        m_Pass.Dispose();
-    }
-
-
-    private class TransparentShadowPass : ScriptableRenderPass
-    {
-        /* Static Variables */
-        private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentShadow");
-        private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
-        private static int  s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
-        private static int  s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
-        private static int  s_atlasSize = 4096;
-
-
-        /* Member Variables */
-        private RTHandle m_TransparentShadowRT; // R: Depth, A : Alpha Sum
-        private ProfilingSampler m_ProfilingSampler;
-        private PassData m_PassData;
-
-        FilteringSettings m_FilteringSettings;
-
-        public TransparentShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, Camera lightCamera)
-        {
-            m_PassData = new PassData();
-            m_FilteringSettings = new FilteringSettings(renderQueueRange);
-            renderPassEvent = evt;
-            if (lightCamera != null)
+            m_Pass = new TransparentShadowPass(injectionPoint, RenderQueueRange.transparent, lightCamera);
+            m_Pass.ConfigureInput(requirements);
+            if (lightCamera == null)
             {
-                m_PassData.viewM = lightCamera.worldToCameraMatrix;
-                m_PassData.projectM = lightCamera.projectionMatrix;
+                lightCamera = GameObject.FindGameObjectWithTag("CharacterShadow")?.GetComponent<Camera>();
             }
         }
 
-        public void Dispose()
+        // Here you can inject one or multiple render passes in the renderer.
+        // This method is called when setting up the renderer once per-camera.
+        public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            m_TransparentShadowRT?.Release();
+            m_Pass.Setup("TransparentShadowMapRendererFeature");
+            renderer.EnqueuePass(m_Pass);
         }
 
-        public void Setup(string featureName, in RenderingData renderingData)
+        protected override void Dispose(bool disposing)
         {
-            m_ProfilingSampler = new ProfilingSampler(featureName);
+            m_Pass.Dispose();
         }
 
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+
+        private class TransparentShadowPass : ScriptableRenderPass
         {
-            // R: Depth, A : Alpha Sum
-            var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.ARGBFloat);
-            descriptor.depthBufferBits = 0;
-            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
-            cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
-            ConfigureTarget(m_TransparentShadowRT);
-            ConfigureClear(ClearFlag.All, Color.clear);
-        }
+            /* Static Variables */
+            private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentShadow");
+            private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
+            private static int  s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
+            private static int  s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
+            private static int  s_atlasSize = 4096;
 
-        // Cleanup any allocated resources that were created during the execution of this render pass.
-        public override void OnCameraCleanup(CommandBuffer cmd)
-        {
-            
-        }
 
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
-        {
-            m_PassData.shaderTagId = k_ShaderTagId;
-            m_PassData.filteringSettings = m_FilteringSettings;
-            m_PassData.profilingSampler = m_ProfilingSampler;
+            /* Member Variables */
+            private RTHandle m_TransparentShadowRT; // R: Depth, A : Alpha Sum
+            private ProfilingSampler m_ProfilingSampler;
+            private PassData m_PassData;
+            private FilteringSettings m_FilteringSettings;
 
-            ExecuteTransparentShadowPass(context, m_PassData, ref renderingData);
-        }
-
-        private static void ExecuteTransparentShadowPass(ScriptableRenderContext context, PassData passData, ref RenderingData renderingData)
-        {
-            var cmd = CommandBufferPool.Get();
-            var filteringSettings = passData.filteringSettings;
-
-            using (new ProfilingScope(cmd, passData.profilingSampler))
+            public TransparentShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, Camera lightCamera)
             {
+                m_PassData = new PassData();
+                m_FilteringSettings = new FilteringSettings(renderQueueRange);
+                renderPassEvent = evt;
+                if (lightCamera != null)
+                {
+                    m_PassData.viewM = lightCamera.worldToCameraMatrix;
+                    m_PassData.projectM = lightCamera.projectionMatrix;
+                }
+            }
+
+            public void Dispose()
+            {
+                m_TransparentShadowRT?.Release();
+            }
+
+            public void Setup(string featureName)
+            {
+                m_ProfilingSampler = new ProfilingSampler(featureName);
+            }
+
+            public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+            {
+                // R: Depth, A : Alpha Sum
+                var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.ARGBFloat);
+                descriptor.depthBufferBits = 0;
+                RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
+                cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
+                ConfigureTarget(m_TransparentShadowRT);
+                ConfigureClear(ClearFlag.All, Color.clear);
+            }
+
+            // Cleanup any allocated resources that were created during the execution of this render pass.
+            public override void OnCameraCleanup(CommandBuffer cmd)
+            {
+                
+            }
+
+            public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+            {
+                m_PassData.shaderTagId = k_ShaderTagId;
+                m_PassData.filteringSettings = m_FilteringSettings;
+                m_PassData.profilingSampler = m_ProfilingSampler;
+
+                ExecuteTransparentShadowPass(context, m_PassData, ref renderingData);
+            }
+
+            private static void ExecuteTransparentShadowPass(ScriptableRenderContext context, PassData passData, ref RenderingData renderingData)
+            {
+                var cmd = CommandBufferPool.Get();
+                var filteringSettings = passData.filteringSettings;
+
+                using (new ProfilingScope(cmd, passData.profilingSampler))
+                {
+                    context.ExecuteCommandBuffer(cmd);
+                    cmd.Clear();
+
+                    // Depth & Alpha Sum
+                    var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
+                    drawSettings.perObjectData = PerObjectData.None;
+                    context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+                }
+
                 context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
-
-                // Depth & Alpha Sum
-                var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
-                drawSettings.perObjectData = PerObjectData.None;
-                context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+                CommandBufferPool.Release(cmd);
             }
 
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
-        }
-
-        private class PassData
-        {
-            public ShaderTagId shaderTagId;
-            public FilteringSettings filteringSettings;
-            public ProfilingSampler profilingSampler;
-            public Matrix4x4 viewM;
-            public Matrix4x4 projectM;
+            private class PassData
+            {
+                public ShaderTagId shaderTagId;
+                public FilteringSettings filteringSettings;
+                public ProfilingSampler profilingSampler;
+                public Matrix4x4 viewM;
+                public Matrix4x4 projectM;
+            }
         }
     }
 }
-
-
