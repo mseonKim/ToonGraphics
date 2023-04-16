@@ -24,8 +24,8 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 			#include "LinkedListRendering.hlsl"
 
-			TEXTURE2D_X(_CameraOpaqueTexture);
-            SAMPLER(sampler_CameraOpaqueTexture);
+			// TEXTURE2D_X(_CameraOpaqueTexture);
+            // SAMPLER(sampler_CameraOpaqueTexture);
 
 			struct appdata {
 				float4 vertex : POSITION;

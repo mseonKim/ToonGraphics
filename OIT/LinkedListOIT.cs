@@ -127,7 +127,7 @@ namespace ToonGraphics
         public void PreRender(CommandBuffer command)
         {
             // validate the effect itself
-            if (Screen.width != screenWidth || Screen.height != screenHeight)
+            if (Screen.width * 2 != screenWidth || Screen.height * 2 != screenHeight)
             {
                 SetupGraphicsBuffers();
             }
@@ -156,8 +156,8 @@ namespace ToonGraphics
         private void SetupGraphicsBuffers()
         {
             Release();
-            screenWidth = Screen.width;
-            screenHeight = Screen.height;
+            screenWidth = Screen.width * 2;
+            screenHeight = Screen.height * 2;
 
             int bufferSize = screenWidth * screenHeight * MAX_SORTED_PIXELS;
             int bufferStride = sizeof(uint) * 3;
