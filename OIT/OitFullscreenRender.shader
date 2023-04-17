@@ -41,6 +41,7 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			{
 				// Retrieve current color from background texture
 				float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, i.texcoord);
+				// float4 color = SAMPLE_TEXTURE2D_X(_CameraOpaqueTexture, sampler_CameraOpaqueTexture, i.texcoord);
 				return renderLinkedList(color, i.positionCS.xy, uSampleIndex);
 			}
 			ENDHLSL

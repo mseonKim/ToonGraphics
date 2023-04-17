@@ -1,6 +1,7 @@
 #ifndef OIT_LINKED_LIST_INCLUDED
 #define OIT_LINKED_LIST_INCLUDED
 
+// #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Input.hlsl"
 #include "OitUtils.hlsl"
 
 struct FragmentAndLinkBuffer_STRUCT

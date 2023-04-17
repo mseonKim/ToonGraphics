@@ -86,6 +86,46 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			#include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowPass.hlsl"
 			ENDHLSL
 		}
+
+		Pass
+        {
+            Name "OITDepth"
+            Tags {
+                "LightMode" = "OITDepth"
+            }
+            ZWrite On
+            ZTest LEqual
+            Cull Off
+            ColorMask R
+
+            HLSLPROGRAM
+            #pragma target 2.0
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            struct Attributes
+            {
+                float4 position     : POSITION;
+            };
+            struct Varyings
+            {
+                float4 positionCS   : SV_POSITION;
+            };
+
+            Varyings vert(Attributes input)
+            {
+                Varyings output = (Varyings)0;
+                output.positionCS = TransformObjectToHClip(input.position.xyz);
+                return output;
+            }
+
+            float frag(Varyings input) : SV_TARGET
+            {
+                return input.positionCS.z;
+            }
+            ENDHLSL
+        }
 	}
 
     FallBack "Unlit/Transparent"

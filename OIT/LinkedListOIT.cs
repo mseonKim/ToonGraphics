@@ -38,6 +38,7 @@ namespace ToonGraphics
         private Material material;
         private RTHandle m_CopiedColor;
         private static readonly int s_BlitTextureShaderID = Shader.PropertyToID("_BlitTexture");
+        private static ShaderTagId s_OutlineShaderTagId = new ShaderTagId("TransparentOutline");
 
         public OitPass(Material material, ComputeShader oitComputeUtilsCS)
         {
@@ -81,9 +82,14 @@ namespace ToonGraphics
                     orderIndependentTransparency.SetMaterialData(cmd, material);
                     Blitter.BlitCameraTexture(cmd, src, m_CopiedColor);
                     material.SetTexture(s_BlitTextureShaderID, m_CopiedColor);
+
                     CoreUtils.SetRenderTarget(cmd, src);
                     CoreUtils.DrawFullScreen(cmd, material);
                     // Blitter.BlitTexture(cmd, src, src, material, 0);
+
+                    var drawSettings = RenderingUtils.CreateDrawingSettings(s_OutlineShaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
+                    var filteringSettings = new FilteringSettings(RenderQueueRange.transparent);
+                    context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
                 }
             }
 

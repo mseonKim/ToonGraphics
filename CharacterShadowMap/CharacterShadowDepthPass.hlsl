@@ -30,11 +30,11 @@ Varyings CharShadowVertex(Attributes input)
     // output.positionCS = TransformObjectToHClip(input.position.xyz);
     output.positionCS = CharShadowObjectToHClip(input.position.xyz);
     output.positionCS.z = 1.0;
-    output.positionWS = mul(UNITY_MATRIX_M, float4(input.position.xyz, 1.0));
+    // output.positionWS = mul(UNITY_MATRIX_M, float4(input.position.xyz, 1.0));
     return output;
 }
 
-float CharShadowFragment(Varyings input) : SV_TARGET
+float CharShadowFragment(Varyings input) : SV_DEPTH
 {
     // UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
@@ -42,6 +42,7 @@ float CharShadowFragment(Varyings input) : SV_TARGET
 
     // float4 clipPos = CharShadowWorldToHClip(input.positionWS);
     // clipPos.xyz = clipPos.xyz / clipPos.w;
+    // return clipPos.z;
     return input.positionCS.z;
 }
 #endif

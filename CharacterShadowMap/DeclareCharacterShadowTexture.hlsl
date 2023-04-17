@@ -16,6 +16,11 @@ float _CharShadowStepOffset;
 TEXTURE2D(_TransparentShadowAtlas);
 // SAMPLER(sampler_TransparentShadowAtlas);
 
+half LinearStep_(float m, float M, float x)
+{
+    return saturate((x - m) / (M - m));
+}
+
 float3 ApplyShadowBias(float3 positionWS, float3 lightDirection)
 {
     positionWS = lightDirection * _CharShadowBias + positionWS;
@@ -50,7 +55,7 @@ float4 CharShadowObjectToHClipWithoutBias(float3 positionOS)
 half SampleCharacterShadowmap(float2 uv, float z)
 {
     float var = SAMPLE_TEXTURE2D(_CharShadowAtlas, sampler_CharShadowAtlas, uv).r;
-    return var >= z;
+    return var > z;
 }
 
 half SampleCharacterShadowmapFiltered(float2 uv, float z)
@@ -81,36 +86,37 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z)
                 // + fetchesWeights[15] * SampleCharacterShadowmap(fetchesUV[15].xy, z);
 
     return 1.0 - step(attenuation, _CharShadowStepOffset);
-    // return 0;
+    // return LinearStep_(0.01, 0.1, attenuation);
+    // return attenuation;
 }
 
-half SampleTransparentShadowmap(float2 uv, float z)
+half SampleTransparentShadowmap(float2 uv, float z, SamplerState s)
 {
-    return SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).r >= z;
+    return SAMPLE_TEXTURE2D(_TransparentShadowAtlas, s, uv).r > z;
 }
 
-half SampleTransparentShadowmapFiltered(float2 uv, float z)
+half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s)
 {
     real fetchesWeights[9];
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharShadowmapSize, uv, fetchesWeights, fetchesUV);
 
-    float attenuation = fetchesWeights[0] * SampleTransparentShadowmap(fetchesUV[0].xy, z)
-                + fetchesWeights[1] * SampleTransparentShadowmap(fetchesUV[1].xy, z)
-                + fetchesWeights[2] * SampleTransparentShadowmap(fetchesUV[2].xy, z)
-                + fetchesWeights[3] * SampleTransparentShadowmap(fetchesUV[3].xy, z)
-                + fetchesWeights[4] * SampleTransparentShadowmap(fetchesUV[4].xy, z)
-                + fetchesWeights[5] * SampleTransparentShadowmap(fetchesUV[5].xy, z)
-                + fetchesWeights[6] * SampleTransparentShadowmap(fetchesUV[6].xy, z)
-                + fetchesWeights[7] * SampleTransparentShadowmap(fetchesUV[7].xy, z)
-                + fetchesWeights[8] * SampleTransparentShadowmap(fetchesUV[8].xy, z);
+    float attenuation = fetchesWeights[0] * SampleTransparentShadowmap(fetchesUV[0].xy, z, s)
+                + fetchesWeights[1] * SampleTransparentShadowmap(fetchesUV[1].xy, z, s)
+                + fetchesWeights[2] * SampleTransparentShadowmap(fetchesUV[2].xy, z, s)
+                + fetchesWeights[3] * SampleTransparentShadowmap(fetchesUV[3].xy, z, s)
+                + fetchesWeights[4] * SampleTransparentShadowmap(fetchesUV[4].xy, z, s)
+                + fetchesWeights[5] * SampleTransparentShadowmap(fetchesUV[5].xy, z, s)
+                + fetchesWeights[6] * SampleTransparentShadowmap(fetchesUV[6].xy, z, s)
+                + fetchesWeights[7] * SampleTransparentShadowmap(fetchesUV[7].xy, z, s)
+                + fetchesWeights[8] * SampleTransparentShadowmap(fetchesUV[8].xy, z, s);
 
     return 1.0 - step(attenuation, _CharShadowStepOffset);
 }
 
 half GetTransparentShadow(float2 uv, float z, float opacity)
 {
-    half hidden = SampleTransparentShadowmapFiltered(uv, z);
+    half hidden = SampleTransparentShadowmapFiltered(uv, z, sampler_CharShadowAtlas);
     // Saturate since texture could have value more than 1
     half atten = saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).a - opacity);  // Total alpha sum - current pixel's alpha
     return min(hidden, atten);

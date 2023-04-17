@@ -90,7 +90,7 @@ namespace ToonGraphics
 
             /* Member Variables */
             private RTHandle m_CharShadowRT;
-            private RTHandle m_TransparentShadowRT;
+            // private RTHandle m_TransparentShadowRT;
             private ShaderTagId shaderTagId { get; set; } = k_ShaderTagId;
             private ProfilingSampler m_ProfilingSampler;
             private PassData m_PassData;
