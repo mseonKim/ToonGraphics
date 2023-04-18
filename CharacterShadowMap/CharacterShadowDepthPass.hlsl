@@ -20,29 +20,32 @@ struct Varyings
     // UNITY_VERTEX_OUTPUT_STEREO
 };
 
+float4 _ClippingMask_ST;
+TEXTURE2D(_ClippingMask); SAMPLER(sampler_ClippingMask);
+
 Varyings CharShadowVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
     // UNITY_SETUP_INSTANCE_ID(input);
     // UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-    output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    // output.positionCS = TransformObjectToHClip(input.position.xyz);
+    output.uv = TRANSFORM_TEX(input.texcoord, _ClippingMask);
     output.positionCS = CharShadowObjectToHClip(input.position.xyz);
-    output.positionCS.z = 1.0;
-    // output.positionWS = mul(UNITY_MATRIX_M, float4(input.position.xyz, 1.0));
+#if UNITY_REVERSED_Z
+    output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#else
+    output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#endif
     return output;
 }
 
-float CharShadowFragment(Varyings input) : SV_DEPTH
+float4 CharShadowFragment(Varyings input) : SV_TARGET
 {
     // UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-    // Alpha(SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap)).a, _BaseColor, _Cutoff);
-
-    // float4 clipPos = CharShadowWorldToHClip(input.positionWS);
-    // clipPos.xyz = clipPos.xyz / clipPos.w;
-    // return clipPos.z;
-    return input.positionCS.z;
+    float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_ClippingMask, input.uv).r;
+    clip(alphaClipVar- 0.001);
+    // return input.positionCS.z;
+    return 0;
 }
 #endif

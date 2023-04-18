@@ -1,3 +1,5 @@
+///
+/// This Renderer Feature basically renders transparent object's depth to R channel.
 /// How to use
 /// 1. Add pass in your shader to use "OITDepth" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]

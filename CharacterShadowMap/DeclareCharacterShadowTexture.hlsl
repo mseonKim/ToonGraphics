@@ -27,13 +27,13 @@ float3 ApplyShadowBias(float3 positionWS, float3 lightDirection)
     return positionWS;
 }
 
-float3 CharShadowWorldToView(float3 positionWS)
+float4 CharShadowWorldToView(float3 positionWS)
 {
-    return mul(_CharShadowViewM, float4(positionWS, 1.0)).xyz;
+    return mul(_CharShadowViewM, float4(positionWS, 1.0));
 }
-float4 CharShadowViewToHClip(float3 positionVS)
+float4 CharShadowViewToHClip(float4 positionVS)
 {
-    return mul(_CharShadowProjM, float4(positionVS, 1.0));
+    return mul(_CharShadowProjM, positionVS);
 }
 float4 CharShadowWorldToHClip(float3 positionWS)
 {
@@ -60,6 +60,7 @@ half SampleCharacterShadowmap(float2 uv, float z)
 
 half SampleCharacterShadowmapFiltered(float2 uv, float z)
 {
+    z += 0.00001;
     real fetchesWeights[9];
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharShadowmapSize, uv, fetchesWeights, fetchesUV);
@@ -85,9 +86,9 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z)
                 // + fetchesWeights[14] * SampleCharacterShadowmap(fetchesUV[14].xy, z);
                 // + fetchesWeights[15] * SampleCharacterShadowmap(fetchesUV[15].xy, z);
 
-    return 1.0 - step(attenuation, _CharShadowStepOffset);
-    // return LinearStep_(0.01, 0.1, attenuation);
     // return attenuation;
+    // return 1.0 - step(attenuation, _CharShadowStepOffset);
+    return LinearStep_(_CharShadowStepOffset - 0.1, _CharShadowStepOffset, attenuation);
 }
 
 half SampleTransparentShadowmap(float2 uv, float z, SamplerState s)

@@ -7,6 +7,7 @@
 /// 5. Set FOV
 /// 6. Add pass in your shader to use 'CharacterShadowDepthPass.hlsl' with "CharacterDepth" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]
+ * NOTE) We assume that the shader use "_ClippingMask" property.
  * Pass
  *   {
  *       Name "CharacterDepth"
@@ -27,7 +28,6 @@
  *       #pragma vertex CharShadowVertex
  *       #pragma fragment CharShadowFragment
  *
- *       #include "../../UniversalRP/Shaders/UniversalToonInput.hlsl"
  *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/CharacterShadowDepthPass.hlsl"
  *       ENDHLSL
  *   }
@@ -105,7 +105,9 @@ namespace ToonGraphics
                 this.shaderTagId = k_ShaderTagId;
                 if (lightCamera != null)
                 {
+                    float widthScale = (float)Screen.width / (float)Screen.height;
                     m_PassData.viewM = lightCamera.worldToCameraMatrix;
+                    m_PassData.viewM.m00 *= widthScale;
                     m_PassData.projectM = lightCamera.projectionMatrix;
                 }
             }
