@@ -115,11 +115,16 @@ half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s)
     return 1.0 - step(attenuation, _CharShadowStepOffset);
 }
 
+half TransparentAttenuation(float2 uv, float opacity)
+{
+    // Saturate since texture could have value more than 1
+    return saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).a - opacity);    // Total alpha sum - current pixel's alpha
+}
+
 half GetTransparentShadow(float2 uv, float z, float opacity)
 {
     half hidden = SampleTransparentShadowmapFiltered(uv, z, sampler_CharShadowAtlas);
-    // Saturate since texture could have value more than 1
-    half atten = saturate(SAMPLE_TEXTURE2D(_TransparentShadowAtlas, sampler_CharShadowAtlas, uv).a - opacity);  // Total alpha sum - current pixel's alpha
+    half atten = TransparentAttenuation(uv, opacity);
     return min(hidden, atten);
 }
 
