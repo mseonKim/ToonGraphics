@@ -46,7 +46,6 @@ namespace ToonGraphics
     public class TransparentShadowMap : ScriptableRendererFeature
     {
         TransparentShadowPass m_Pass;
-        public static Camera lightCamera;
         
         // Note) the RenderPassEvent is set as BeforeRenderingOpaques.
         // It means this RendererFeature should be executed after 'CharacterShadowMap' Feature which is set as BeforeRenderingPrePasses.
@@ -56,12 +55,8 @@ namespace ToonGraphics
         /// <inheritdoc/>
         public override void Create()
         {
-            m_Pass = new TransparentShadowPass(injectionPoint, RenderQueueRange.transparent, lightCamera);
+            m_Pass = new TransparentShadowPass(injectionPoint, RenderQueueRange.transparent);
             m_Pass.ConfigureInput(requirements);
-            if (lightCamera == null)
-            {
-                lightCamera = GameObject.FindGameObjectWithTag("CharacterShadow")?.GetComponent<Camera>();
-            }
         }
 
         // Here you can inject one or multiple render passes in the renderer.
@@ -83,8 +78,6 @@ namespace ToonGraphics
             /* Static Variables */
             private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentShadow");
             private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
-            private static int  s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
-            private static int  s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
             private static int  s_atlasSize = 4096;
 
 
@@ -94,16 +87,11 @@ namespace ToonGraphics
             private PassData m_PassData;
             private FilteringSettings m_FilteringSettings;
 
-            public TransparentShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, Camera lightCamera)
+            public TransparentShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange)
             {
                 m_PassData = new PassData();
                 m_FilteringSettings = new FilteringSettings(renderQueueRange);
                 renderPassEvent = evt;
-                if (lightCamera != null)
-                {
-                    m_PassData.viewM = lightCamera.worldToCameraMatrix;
-                    m_PassData.projectM = lightCamera.projectionMatrix;
-                }
             }
 
             public void Dispose()
@@ -167,8 +155,6 @@ namespace ToonGraphics
                 public ShaderTagId shaderTagId;
                 public FilteringSettings filteringSettings;
                 public ProfilingSampler profilingSampler;
-                public Matrix4x4 viewM;
-                public Matrix4x4 projectM;
             }
         }
     }

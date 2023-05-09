@@ -1,3 +1,6 @@
+/// NOTE)
+/// This feature should be used with CharacterShadowMap & TransparentShadoMap Renderer Features together.
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -162,8 +165,8 @@ namespace ToonGraphics
         private void SetupGraphicsBuffers()
         {
             Release();
-            screenWidth = Screen.width * 2;
-            screenHeight = Screen.height * 2;
+            screenWidth = Screen.width; // * 2
+            screenHeight = Screen.height; // * 2
 
             int bufferSize = screenWidth * screenHeight * MAX_SORTED_PIXELS;
             int bufferStride = sizeof(uint) * 3;

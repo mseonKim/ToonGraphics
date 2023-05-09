@@ -4,16 +4,18 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Input.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
-float _CharShadowBias;
-float4x4 _CharShadowViewM;
-float4x4 _CharShadowProjM;
-TEXTURE2D(_CharShadowAtlas);
-SAMPLER(sampler_CharShadowAtlas);
-float4 _CharShadowOffset0;
-float4 _CharShadowOffset1;
-float4 _CharShadowmapSize;
-float _CharShadowStepOffset;
-TEXTURE2D(_TransparentShadowAtlas);
+CBUFFER_START(CharShadow)
+    float _CharShadowBias;
+    float4x4 _CharShadowViewM;
+    float4x4 _CharShadowProjM;
+    TEXTURE2D(_CharShadowAtlas);
+    SAMPLER(sampler_CharShadowAtlas);
+    float4 _CharShadowOffset0;
+    float4 _CharShadowOffset1;
+    float4 _CharShadowmapSize;
+    float _CharShadowStepOffset;
+    TEXTURE2D(_TransparentShadowAtlas);
+CBUFFER_END
 // SAMPLER(sampler_TransparentShadowAtlas);
 
 half LinearStep_(float m, float M, float x)

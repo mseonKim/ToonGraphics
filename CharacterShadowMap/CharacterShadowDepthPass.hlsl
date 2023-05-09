@@ -15,7 +15,7 @@ struct Varyings
 {
     float2 uv           : TEXCOORD0;
     float4 positionCS   : SV_POSITION;
-    float3 positionWS   : TEXCOORD1;
+    // float3 positionWS   : TEXCOORD1;
     // UNITY_VERTEX_INPUT_INSTANCE_ID
     // UNITY_VERTEX_OUTPUT_STEREO
 };
@@ -39,13 +39,12 @@ Varyings CharShadowVertex(Attributes input)
     return output;
 }
 
-float4 CharShadowFragment(Varyings input) : SV_TARGET
+float CharShadowFragment(Varyings input) : SV_TARGET
 {
     // UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
     float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_ClippingMask, input.uv).r;
     clip(alphaClipVar- 0.001);
-    // return input.positionCS.z;
-    return 0;
+    return input.positionCS.z;
 }
 #endif

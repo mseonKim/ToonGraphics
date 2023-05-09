@@ -51,12 +51,12 @@ namespace ToonGraphics
         /// <inheritdoc/>
         public override void Create()
         {
-            m_Pass = new CharacterShadowPass(injectionPoint, RenderQueueRange.opaque, lightCamera);
-            m_Pass.ConfigureInput(requirements);
             if (lightCamera == null)
             {
                 lightCamera = GameObject.FindGameObjectWithTag("CharacterShadow")?.GetComponent<Camera>();
             }
+            m_Pass = new CharacterShadowPass(injectionPoint, RenderQueueRange.opaque, lightCamera);
+            m_Pass.ConfigureInput(requirements);
         }
 
         // Here you can inject one or multiple render passes in the renderer.
@@ -126,9 +126,7 @@ namespace ToonGraphics
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
-                // var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.RGB111110Float, 0);
-                var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.Shadowmap, 32);
-                // RTHandles.Alloc(descriptor, FilterMode.Point, name:"_CharShadowAtlas");
+                var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.RFloat, 0);
                 RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
                 cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
 
@@ -182,7 +180,6 @@ namespace ToonGraphics
                         s_atlasSize, s_atlasSize));
                     cmd.SetGlobalFloat(s_ShadowStepOffset, passData.stepOffset);
 
-                    // var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
                     var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonOpaque);
                     drawSettings.perObjectData = PerObjectData.None;
 
