@@ -83,7 +83,7 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			#pragma vertex TransparentShadowVert
 			#pragma fragment TransparentShadowFragment
 	
-			#include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowPass.hlsl"
+			#include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
 			ENDHLSL
 		}
 

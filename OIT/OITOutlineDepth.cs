@@ -111,7 +111,7 @@ namespace ToonGraphics
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
-                var descriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.RFloat);
+                var descriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.RHalf);
                 descriptor.depthBufferBits = 0;
                 RenderingUtils.ReAllocateIfNeeded(ref m_OITDepthRT, descriptor, FilterMode.Bilinear, name:"_OITDepthTexture");
                 cmd.SetGlobalTexture(s_OITDepthTextureId, m_OITDepthRT.nameID);

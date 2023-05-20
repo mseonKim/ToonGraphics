@@ -55,7 +55,7 @@ namespace ToonGraphics
         {
             CommandBuffer cmd = CommandBufferPool.Get();
             cmd.Clear();
-            using (new ProfilingScope(cmd, new ProfilingSampler("Order Independent Transparency Pre Render")))
+            using (new ProfilingScope(cmd, new ProfilingSampler("Order Independent Transparency PreRender")))
             {
                 orderIndependentTransparency.PreRender(cmd);
             }
@@ -142,7 +142,7 @@ namespace ToonGraphics
             }
 
             //reset StartOffsetBuffer to zeros
-            oitComputeUtils.Dispatch(clearStartOffsetBufferKernel, dispatchGroupSizeX, dispatchGroupSizeY, 1);
+            command.DispatchCompute(oitComputeUtils, clearStartOffsetBufferKernel, dispatchGroupSizeX, dispatchGroupSizeY, 1);
 
             // set buffers for rendering
             command.SetRandomWriteTarget(1, fragmentLinkBuffer);

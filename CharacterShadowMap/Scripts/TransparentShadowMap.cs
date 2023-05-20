@@ -32,7 +32,7 @@
  *       #pragma vertex TransparentShadowVert
  *       #pragma fragment TransparentShadowFragment
  *
- *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/TransparentShadowPass.hlsl"
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
  *       ENDHLSL
  *   }
  */
@@ -51,6 +51,8 @@ namespace ToonGraphics
         // It means this RendererFeature should be executed after 'CharacterShadowMap' Feature which is set as BeforeRenderingPrePasses.
         public RenderPassEvent injectionPoint = RenderPassEvent.BeforeRenderingOpaques;
         public ScriptableRenderPassInput requirements = ScriptableRenderPassInput.None;
+        public CustomShadowMapSize atlasSize = CustomShadowMapSize._4096;
+        public bool enableAdditionalShadow;
 
         /// <inheritdoc/>
         public override void Create()
@@ -63,7 +65,7 @@ namespace ToonGraphics
         // This method is called when setting up the renderer once per-camera.
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            m_Pass.Setup("TransparentShadowMapRendererFeature");
+            m_Pass.Setup("TransparentShadowMapRendererFeature", (int)atlasSize, enableAdditionalShadow);
             renderer.EnqueuePass(m_Pass);
         }
 
@@ -78,7 +80,8 @@ namespace ToonGraphics
             /* Static Variables */
             private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentShadow");
             private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
-            private static int  s_atlasSize = 4096;
+            private static int s_ShadowMapSize = Shader.PropertyToID("_CharTransparentShadowmapSize");
+            private static int s_ShadowMapIndex = Shader.PropertyToID("_CharShadowmapIndex");
 
 
             /* Member Variables */
@@ -99,20 +102,25 @@ namespace ToonGraphics
                 m_TransparentShadowRT?.Release();
             }
 
-            public void Setup(string featureName)
+            public void Setup(string featureName, int size, bool enableAdditionalShadow)
             {
                 m_ProfilingSampler = new ProfilingSampler(featureName);
+                m_PassData.atlasSize = size;
+                m_PassData.enableAdditionalShadow = enableAdditionalShadow;
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 // R: Depth, A : Alpha Sum
-                var descriptor = new RenderTextureDescriptor(s_atlasSize, s_atlasSize, RenderTextureFormat.ARGBFloat);
-                descriptor.depthBufferBits = 0;
+                var descriptor = new RenderTextureDescriptor(m_PassData.atlasSize, m_PassData.atlasSize, RenderTextureFormat.ARGBHalf, 0);
+                descriptor.dimension = TextureDimension.Tex2DArray;
+                descriptor.sRGB = false;
+                descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
                 RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
                 cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
-                ConfigureTarget(m_TransparentShadowRT);
-                ConfigureClear(ClearFlag.All, Color.clear);
+                m_PassData.target = m_TransparentShadowRT;
+                // ConfigureTarget(m_TransparentShadowRT);
+                // ConfigureClear(ClearFlag.All, Color.clear);
             }
 
             // Cleanup any allocated resources that were created during the execution of this render pass.
@@ -135,15 +143,36 @@ namespace ToonGraphics
                 var cmd = CommandBufferPool.Get();
                 var filteringSettings = passData.filteringSettings;
 
+                float invShadowAtlasWidth = 1.0f / passData.atlasSize;
+                float invShadowAtlasHeight = 1.0f / passData.atlasSize;
+                float invHalfShadowAtlasWidth = 0.5f * invShadowAtlasWidth;
+                float invHalfShadowAtlasHeight = 0.5f * invShadowAtlasHeight;
+
                 using (new ProfilingScope(cmd, passData.profilingSampler))
                 {
+                    cmd.SetGlobalVector(s_ShadowMapSize, new Vector4(invShadowAtlasWidth, invShadowAtlasHeight, passData.atlasSize, passData.atlasSize));
+                    cmd.SetGlobalFloat(s_ShadowMapIndex, 0);
+                    CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, 0);
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
 
                     // Depth & Alpha Sum
                     var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
-                    drawSettings.perObjectData = PerObjectData.None;
                     context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+
+                    if (passData.enableAdditionalShadow)
+                    {
+                        context.ExecuteCommandBuffer(cmd);
+                        cmd.Clear();
+                        for (int i = 0; i < 3; i++)
+                        {
+                            CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
+                            cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
+                            context.ExecuteCommandBuffer(cmd);
+                            cmd.Clear();
+                            context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+                        }
+                    }
                 }
 
                 context.ExecuteCommandBuffer(cmd);
@@ -155,6 +184,9 @@ namespace ToonGraphics
                 public ShaderTagId shaderTagId;
                 public FilteringSettings filteringSettings;
                 public ProfilingSampler profilingSampler;
+                public RTHandle target;
+                public int atlasSize;
+                public bool enableAdditionalShadow;
             }
         }
     }

@@ -8,6 +8,7 @@ struct Attributes
 {
     float4 position     : POSITION;
     float2 texcoord     : TEXCOORD0;
+    float3 normal     : NORMAL;
     // UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -30,7 +31,8 @@ Varyings CharShadowVertex(Attributes input)
     // UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
     output.uv = TRANSFORM_TEX(input.texcoord, _ClippingMask);
-    output.positionCS = CharShadowObjectToHClip(input.position.xyz);
+    output.positionCS = CharShadowObjectToHClip(input.position.xyz, input.normal, (uint)_CharShadowmapIndex);
+
 #if UNITY_REVERSED_Z
     output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #else
@@ -45,6 +47,10 @@ float CharShadowFragment(Varyings input) : SV_TARGET
 
     float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_ClippingMask, input.uv).r;
     clip(alphaClipVar- 0.001);
+    // uint idx = (uint)_CharShadowmapIndex;
+    // float4 output = input.positionCS.z;
+    // output *= float4(idx == 0, idx == 1, idx == 2, idx == 3);
+    
     return input.positionCS.z;
 }
 #endif

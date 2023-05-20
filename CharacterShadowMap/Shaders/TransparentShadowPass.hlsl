@@ -25,7 +25,7 @@ TEXTURE2D(_ClippingMask);
 v2f TransparentShadowVert (appdata v)
 {
     v2f o;
-    o.vertex = CharShadowObjectToHClipWithoutBias(v.vertex.xyz);
+    o.vertex = CharShadowObjectToHClipWithoutBias(v.vertex.xyz, (uint)_CharShadowmapIndex);
     o.vertex.z = 1.0;
     o.uv = v.uv;
     o.positionWS = mul(UNITY_MATRIX_M, float4(v.vertex.xyz, 1.0));
@@ -34,7 +34,7 @@ v2f TransparentShadowVert (appdata v)
 
 float4 TransparentShadowFragment (v2f i) : SV_Target
 {
-    float4 clipPos = CharShadowWorldToHClip(i.positionWS);
+    float4 clipPos = CharShadowWorldToHClip(i.positionWS, (uint)_CharShadowmapIndex);
     clipPos.z = 1.0;
     float3 ndc = clipPos.xyz / clipPos.w;
     float2 ssUV = ndc.xy * 0.5 + 0.5;
@@ -49,7 +49,7 @@ float4 TransparentShadowFragment (v2f i) : SV_Target
     color.a *= alphaClipVar;
     clip(color.a - 0.001);
     // Discard behind fragment
-    color.a = lerp(color.a, 0, SampleCharacterShadowmap(ssUV, ndc.z));
+    color.a = lerp(color.a, 0, SampleCharacterShadowmap(ssUV, ndc.z, (uint)_CharShadowmapIndex));
     color.r = i.vertex.z;   // Depth
     return color;
     // return _BaseColor.a;
