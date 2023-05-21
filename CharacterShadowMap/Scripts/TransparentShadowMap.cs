@@ -119,8 +119,6 @@ namespace ToonGraphics
                 RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
                 cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
                 m_PassData.target = m_TransparentShadowRT;
-                // ConfigureTarget(m_TransparentShadowRT);
-                // ConfigureClear(ClearFlag.All, Color.clear);
             }
 
             // Cleanup any allocated resources that were created during the execution of this render pass.

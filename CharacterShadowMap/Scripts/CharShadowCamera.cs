@@ -10,15 +10,14 @@ namespace ToonGraphics
     [ExecuteAlways]
     public class CharShadowCamera : MonoBehaviour
     {
-        public static Camera[] lightCameras = new Camera[4];  // 0 : Main, 1~3 : Spot
+        public static CharShadowCamera Instance => s_Instance;
+        private static CharShadowCamera s_Instance;
 
         public Transform target;    // Character Transform
         public float charBoundOffset = 1;
         public float charHalfHeight = 0.75f; // Character half height
         public float cameraDistance = 4f;
-
-        [SerializeField]
-        private Camera[] m_LightCameras = new Camera[4];
+        public Camera[] lightCameras = new Camera[4];
 
         private Light _mainLight;
         private Light[] _spotLights = new Light[3];
@@ -31,20 +30,19 @@ namespace ToonGraphics
 
         void Awake()
         {
+            s_Instance = this;
             _sceneLights = new List<Light>(256);
-            SetLightCameras();
         }
 
         // Start is called before the first frame update
         void Start()
         {
-            RefreshSceneLights();
+            // RefreshSceneLights();
         }
 
         void LateUpdate()
         {
-            CalculateMostIntensiveLights(_spotLights);
-            RefreshLightCameraTransforms();
+            // RefreshLightCameraTransforms();
         }
 
         ///<summary>
@@ -72,25 +70,13 @@ namespace ToonGraphics
             }
         }
 
-        private void SetLightCameras()
-        {
-            for (int i = 0; i < 4; i ++)
-                lightCameras[i] = m_LightCameras[i];
-        }
-
-        private void RefreshLightCameraTransforms()
+        public void RefreshLightCameraTransforms()
         {
             // Update Main Light Camera Transform
             SetLightCameraTransform(lightCameras[0], _mainLight);
-
-            // Update Additional Light Camera Transforms
-            for (int i = 0; i < 3; i++)
-            {
-                SetLightCameraTransform(lightCameras[i + 1], _spotLights[i]);
-            }
         }
 
-        private void SetLightCameraTransform(Camera lightCamera, Light light)
+        public void SetLightCameraTransform(Camera lightCamera, Light light)
         {
             if (lightCamera == null || light == null)
                 return;
@@ -100,30 +86,11 @@ namespace ToonGraphics
             lightCamera.transform.position = target.position + (Vector3.up * charHalfHeight) + (-dir * cameraDistance);
         }
 
-
-        private void CalculateMostIntensiveLights(Light[] outLights)
+        public void SetLightCameraTransform(int camIndex, Light light)
         {
-            int length = outLights.Length;
-            int count = 0;
-
-            for (int i = 0; i < length; i++)
-            {
-                outLights[i] = null;
-            }
-
-            foreach (var light in _sceneLights)
-            {
-                if (!light.isActiveAndEnabled)
-                    continue;
-
-                // TODO:
-                if (light.type == LightType.Spot)
-                {
-                    outLights[count++] = light;
-                    if (count >= length)
-                        break;
-                }
-            }
+            lightCameras[camIndex].transform.rotation = light.transform.rotation;
+            var dir = light.transform.rotation * Vector3.forward;
+            lightCameras[camIndex].transform.position = target.position + (Vector3.up * charHalfHeight) + (-dir * cameraDistance);
         }
     }
 }

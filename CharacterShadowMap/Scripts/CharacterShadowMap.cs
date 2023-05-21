@@ -1,7 +1,6 @@
 /// How to use
-/// 1. Create "CharacterShadow" Tag and set camera prefab's tag as "CharacterShadow"
-/// 2. Attach 'CharShadowCamera' script to new empty root hierarchy gameObject.
-/// 3. Add pass in your shader to use 'CharacterShadowDepthPass.hlsl' with "CharacterDepth" LightMode. (See below example)
+/// 1. Add 'CharacterShadowCamera' prefab to your scene.
+/// 2. Add pass in your shader to use 'CharacterShadowDepthPass.hlsl' with "CharacterDepth" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]
  * NOTE) We assume that the shader use "_ClippingMask" property.
  * Pass
@@ -32,6 +31,8 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using Unity.Collections;
+using System.Collections.Generic;
 
 namespace ToonGraphics
 {
@@ -45,8 +46,6 @@ namespace ToonGraphics
 
     public enum CustomShadowMapPrecision
     {
-        R8 = 16,
-        R16 = 28,
         RFloat = 14,
         RHalf = 15,
     }
@@ -54,7 +53,6 @@ namespace ToonGraphics
     public class CharacterShadowMap : ScriptableRendererFeature
     {
         private CharacterShadowPass m_Pass;
-        private Camera[] _LightCameras;
         public RenderPassEvent injectionPoint = RenderPassEvent.BeforeRenderingPrePasses;
         public ScriptableRenderPassInput requirements = ScriptableRenderPassInput.None;
         public float bias;
@@ -65,16 +63,12 @@ namespace ToonGraphics
         public float additionalStepOffset = 0.999f;
         public CustomShadowMapSize atlasSize = CustomShadowMapSize._4096;
         public CustomShadowMapPrecision atlasPrecision = CustomShadowMapPrecision.RHalf;
+        public UniversalRendererData urpData;
         public bool enableAdditionalShadow = false;
 
         /// <inheritdoc/>
         public override void Create()
         {
-            // [Deprecated]
-            // if (_LightCameras[0] == null)
-            //     _LightCameras[0] = GameObject.FindGameObjectWithTag("CharacterShadow")?.GetComponent<Camera>();
-
-            _LightCameras = CharShadowCamera.lightCameras;
             m_Pass = new CharacterShadowPass(injectionPoint, RenderQueueRange.opaque);
             m_Pass.ConfigureInput(requirements);
         }
@@ -83,10 +77,12 @@ namespace ToonGraphics
         // This method is called when setting up the renderer once per-camera.
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
+            // Additional shadow is only available in forward+
+            var additionalShadowEnabled = urpData != null ? enableAdditionalShadow && urpData.renderingMode == RenderingMode.ForwardPlus : false;
             m_Pass.Setup(   "CharacterShadowMapRendererFeature", renderingData,
                             new Vector4(bias, normalBias, additionalBias, additionalNormalBias),
                             new Vector2(stepOffset, additionalStepOffset),
-                            (int)atlasSize, (int)atlasPrecision, _LightCameras, enableAdditionalShadow);
+                            (int)atlasSize, (int)atlasPrecision, additionalShadowEnabled);
             renderer.EnqueuePass(m_Pass);
         }
 
@@ -101,9 +97,6 @@ namespace ToonGraphics
             /* Static Variables */
             private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("CharacterDepth");
             private static int s_CharShadowAtlasId = Shader.PropertyToID("_CharShadowAtlas");
-            // private static int[] s_CharAddShadowAtlasIds = new int[3] {    Shader.PropertyToID("_CharAddShadowAtlas0"),
-            //                                                                 Shader.PropertyToID("_CharAddShadowAtlas1"),
-            //                                                                 Shader.PropertyToID("_CharAddShadowAtlas2") };
             private static int s_CharShadowBias = Shader.PropertyToID("_CharShadowBias");
             private static int s_ViewMatrixId = Shader.PropertyToID("_CharShadowViewM");
             private static int s_ProjMatrixId = Shader.PropertyToID("_CharShadowProjM");
@@ -122,6 +115,8 @@ namespace ToonGraphics
             private PassData m_PassData;
 
             FilteringSettings m_FilteringSettings;
+            
+
 
             public CharacterShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange)
             {
@@ -136,7 +131,7 @@ namespace ToonGraphics
                 m_CharShadowRT?.Release();
             }
 
-            public void Setup(string featureName, in RenderingData renderingData, Vector4 bias, Vector2 stepOffset, int size, int precision, Camera[] lightCameras, bool enableAdditionalShadow)
+            public void Setup(string featureName, in RenderingData renderingData, Vector4 bias, Vector2 stepOffset, int size, int precision, bool enableAdditionalShadow)
             {
                 m_ProfilingSampler = new ProfilingSampler(featureName);
                 m_PassData.bias = bias;
@@ -144,7 +139,21 @@ namespace ToonGraphics
                 m_PassData.atlasSize = size;
                 m_PassData.precision = precision;
                 m_PassData.enableAdditionalShadow = enableAdditionalShadow;
+            }
 
+            public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+            {
+                var descriptor = new RenderTextureDescriptor(m_PassData.atlasSize, m_PassData.atlasSize, (RenderTextureFormat)m_PassData.precision, 0);
+                descriptor.dimension = TextureDimension.Tex2DArray;
+                descriptor.sRGB = false;
+                descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
+                RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
+                cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
+
+                m_PassData.target = m_CharShadowRT;
+                CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData);
+
+                var lightCameras = CharShadowCamera.Instance.lightCameras;
                 int length = lightCameras.Length;
                 m_PassData.viewM = new Matrix4x4[length];
                 if (lightCameras != null && lightCameras[0] != null)
@@ -160,18 +169,6 @@ namespace ToonGraphics
                         }
                     }
                 }
-            }
-
-            public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
-            {
-                var descriptor = new RenderTextureDescriptor(m_PassData.atlasSize, m_PassData.atlasSize, (RenderTextureFormat)m_PassData.precision, 0);
-                descriptor.dimension = TextureDimension.Tex2DArray;
-                descriptor.sRGB = false;
-                descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
-                RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
-                cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
-
-                m_PassData.target = m_CharShadowRT;
             }
 
             // Cleanup any allocated resources that were created during the execution of this render pass.
@@ -226,13 +223,14 @@ namespace ToonGraphics
                         context.ExecuteCommandBuffer(cmd);
                         cmd.Clear();
                         var charShadowDirections = new Vector4[3] { Vector4.zero, Vector4.zero, Vector4.zero };
+                        var lightCameras = CharShadowCamera.Instance.lightCameras;
                         for (int i = 0; i < 3; i++)
                         {
                             CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
                             cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
                             context.ExecuteCommandBuffer(cmd);
                             cmd.Clear();
-                            charShadowDirections[i] = CharShadowCamera.lightCameras[i + 1].transform.rotation * Vector3.forward;
+                            charShadowDirections[i] = lightCameras[i + 1].transform.rotation * Vector3.forward;
                             context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
                         }
                         cmd.SetGlobalVectorArray(s_CharShadowLightDirections, charShadowDirections);
