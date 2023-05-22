@@ -17,6 +17,11 @@ namespace ToonGraphics
         public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData);
+            if (spotLightIndices == null)
+            {
+                return;
+            }
+
             var visibleLights = renderingData.lightData.visibleLights;
             var lightCount = renderingData.lightData.visibleLights.Length;
             var lightOffset = 0;
@@ -52,6 +57,11 @@ namespace ToonGraphics
 
         private static List<int> CalculateMostIntensiveLightIndices(ref RenderingData renderingData)
         {
+            if (CharShadowCamera.Instance == null)
+            {
+                return null;
+            }
+
             var lightCount = renderingData.lightData.visibleLights.Length;
             var lightOffset = 0;
             while (lightOffset < lightCount && renderingData.lightData.visibleLights[lightOffset].lightType == LightType.Directional)
