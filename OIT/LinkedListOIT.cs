@@ -1,3 +1,4 @@
+/* Reference: https://github.com/happy-turtle/oit-unity */
 /// NOTE)
 /// This feature should be used with CharacterShadowMap & TransparentShadoMap Renderer Features together.
 

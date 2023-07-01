@@ -139,13 +139,13 @@ namespace ToonGraphics
             screenWidth = Screen.width; // * 2
             screenHeight = Screen.height; // * 2
 
-            int bufferSize = screenWidth * screenHeight * MAX_SORTED_PIXELS;
+            int bufferSize = Mathf.Max(screenWidth * screenHeight * MAX_SORTED_PIXELS, 1);
             int bufferStride = sizeof(uint) * 3;
             //the structured buffer contains all information about the transparent fragments
             //this is the per pixel linked list on the gpu
             fragmentLinkBuffer = new ComputeBuffer(bufferSize, bufferStride, ComputeBufferType.Counter);
 
-            int bufferSizeHead = screenWidth * screenHeight;
+            int bufferSizeHead = Mathf.Max(screenWidth * screenHeight, 1);
             int bufferStrideHead = sizeof(uint);
             //create buffer for addresses, this is the head of the linked list
             startOffsetBuffer = new ComputeBuffer(bufferSizeHead, bufferStrideHead, ComputeBufferType.Raw);
