@@ -38,10 +38,9 @@ namespace ToonGraphics
 {
     public enum CustomShadowMapSize
     {
-        _1024 = 1024,
-        _2048 = 2048,
-        _4096 = 4096,
-        _8192 = 8192
+        X1 = 1,
+        X2 = 2,
+        X4 = 4
     }
 
     public enum CustomShadowMapPrecision
@@ -61,13 +60,13 @@ namespace ToonGraphics
         public float additionalNormalBias;
         public float stepOffset = 0.999f;
         public float additionalStepOffset = 0.999f;
-        public CustomShadowMapSize atlasSize = CustomShadowMapSize._4096;
-        public CustomShadowMapSize transparentAtlasSize = CustomShadowMapSize._4096;
-        public CustomShadowMapPrecision atlasPrecision = CustomShadowMapPrecision.RHalf;
+        public CustomShadowMapSize textureScale = CustomShadowMapSize.X2;
+        public CustomShadowMapSize transparentTextureScale = CustomShadowMapSize.X2;
+        public CustomShadowMapPrecision precision = CustomShadowMapPrecision.RHalf;
         public UniversalRendererData urpData;
+        public bool enableTransparentShadow = false;
         public bool enableAdditionalShadow = false;
 
-        /// <inheritdoc/>
         public override void Create()
         {
             m_CharShadowPass = new CharacterShadowPass(RenderPassEvent.BeforeRenderingPrePasses, RenderQueueRange.opaque);
@@ -76,19 +75,21 @@ namespace ToonGraphics
             m_CharTransparentShadowPass.ConfigureInput(requirements);
         }
 
-        // Here you can inject one or multiple render passes in the renderer.
-        // This method is called when setting up the renderer once per-camera.
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             // Additional shadow is only available in forward+
             var additionalShadowEnabled = urpData != null ? enableAdditionalShadow && urpData.renderingMode == RenderingMode.ForwardPlus : false;
-            m_CharShadowPass.Setup(   "CharacterShadowMapRendererFeature", renderingData,
-                            new Vector4(bias, normalBias, additionalBias, additionalNormalBias),
-                            new Vector2(stepOffset, additionalStepOffset),
-                            (int)atlasSize, (int)atlasPrecision, additionalShadowEnabled);
+            m_CharShadowPass.Setup("CharacterShadowMapRendererFeature", renderingData,
+                                    new Vector4(bias, normalBias, additionalBias, additionalNormalBias),
+                                    new Vector2(stepOffset, additionalStepOffset),
+                                    (int)textureScale, (int)precision, additionalShadowEnabled);
             renderer.EnqueuePass(m_CharShadowPass);
-            m_CharTransparentShadowPass.Setup("TransparentShadowMapRendererFeature", (int)transparentAtlasSize, enableAdditionalShadow);
-            renderer.EnqueuePass(m_CharTransparentShadowPass);
+            if (enableTransparentShadow)
+            {
+                m_CharTransparentShadowPass.Setup("TransparentShadowMapRendererFeature", renderingData,
+                                                  (int)transparentTextureScale, (int)precision, enableAdditionalShadow);
+                renderer.EnqueuePass(m_CharTransparentShadowPass);
+            }
         }
 
         protected override void Dispose(bool disposing)

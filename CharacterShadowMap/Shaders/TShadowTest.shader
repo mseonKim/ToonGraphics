@@ -66,7 +66,7 @@ Shader "Unlit/TShadowTest"
         Pass
         {
             Name "TransparentShadow"
-            Tags{"LightMode" = "TransparentShadow"}
+            Tags {"LightMode" = "TransparentShadow"}
 
             ZWrite Off
             ZTest Off
@@ -86,6 +86,40 @@ Shader "Unlit/TShadowTest"
 
             #pragma vertex TransparentShadowVert
             #pragma fragment TransparentShadowFragment
+            
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            float4 _BaseColor;
+            float4 _MainTex_ST;
+            float4 _ClippingMask_ST;
+            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+            TEXTURE2D(_ClippingMask);
+            #include "TransparentShadowPass.hlsl"
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "TransparentAlphaSum"
+            Tags {"LightMode" = "TransparentAlphaSum"}
+
+            ZWrite Off
+            ZTest Off
+            Cull Off
+            Blend One One, One One
+            BlendOp Max, Add
+
+            HLSLPROGRAM
+            #pragma target 2.0
+
+	    
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x
+            #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            #pragma shader_feature_local _ALPHATEST_ON
+
+            #pragma vertex TransparentShadowVert
+            #pragma fragment TransparentAlphaSumFragment
             
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             float4 _BaseColor;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,6 +10,7 @@ namespace ToonGraphics
 {
     public static class CharacterShadowUtils
     {
+        public static int activeSpotLightCount = 0;
         private static List<VisibleLight> s_vSpotLights = new List<VisibleLight>(256);
         private static List<int> s_vSpotLightIndices = new List<int>(256);
         private static List<KeyValuePair<float, int>> s_SortedSpotLights = new List<KeyValuePair<float, int>>(256);
@@ -17,10 +19,8 @@ namespace ToonGraphics
         public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData);
-            if (spotLightIndices == null)
-            {
+            if (spotLightIndices == null || spotLightIndices.Count == 0)
                 return;
-            }
 
             var visibleLights = renderingData.lightData.visibleLights;
             var lightCount = renderingData.lightData.visibleLights.Length;
@@ -36,9 +36,6 @@ namespace ToonGraphics
                 CharShadowCamera.Instance.SetLightCameraTransform(0, visibleLights[renderingData.lightData.mainLightIndex].light);
                 hasMainLight = 1;
             }
-
-            if (spotLightIndices.Count == 0)
-                return;
 
             var localLightIndices = new float[3] { -1, -1, -1 };
             lightCount = (int)Mathf.Min(spotLightIndices.Count, 3);
@@ -57,6 +54,7 @@ namespace ToonGraphics
 
         private static List<int> CalculateMostIntensiveLightIndices(ref RenderingData renderingData)
         {
+            activeSpotLightCount = 0;
             if (CharShadowCamera.Instance == null)
             {
                 return null;
@@ -76,6 +74,7 @@ namespace ToonGraphics
             s_vSpotLights.Clear();
             s_vSpotLightIndices.Clear();
             s_SortedSpotLights.Clear();
+            
             // Extract spot lights
             for (int i = 0; i < visibleLights.Length; i++)
             {
@@ -96,15 +95,19 @@ namespace ToonGraphics
                 var L = light.transform.rotation * Vector3.forward;
                 var dotL = Vector3.Dot(dirToTarget, L);
                 var distance = diff.magnitude;
-                if (dotL <= Mathf.Cos(light.spotAngle) || distance > light.range)
+                var cos = Mathf.Cos(light.spotAngle * Mathf.Deg2Rad);
+                if (dotL <= cos || distance > light.range)
                 {
                     continue;
                 }
 
                 var finalColor = s_vSpotLights[i].finalColor;
                 var atten = 1f - distance / light.range;
-                var strength = (finalColor.r * 0.229f + finalColor.g * 0.587f + finalColor.b * 0.114f) * atten;
-                s_SortedSpotLights.Add(new KeyValuePair<float, int>(strength, s_vSpotLightIndices[i]));
+                var strength = (finalColor.r * 0.229f + finalColor.g * 0.587f + finalColor.b * 0.114f) * atten * cos;
+                if (strength > 0.01f)
+                {
+                    s_SortedSpotLights.Add(new KeyValuePair<float, int>(strength, s_vSpotLightIndices[i]));
+                }
             }
             // Sort
             s_SortedSpotLights.Sort((x, y) => y.Key.CompareTo(x.Key));
@@ -114,6 +117,7 @@ namespace ToonGraphics
             {
                 charSpotLightIndices.Add(s_SortedSpotLights[i].Value);
             }
+            activeSpotLightCount = (int)Mathf.Min(charSpotLightIndices.Count, 3);
             return charSpotLightIndices;
         }
     }

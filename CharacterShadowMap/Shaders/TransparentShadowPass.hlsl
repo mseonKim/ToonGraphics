@@ -15,32 +15,51 @@
 // TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
 // TEXTURE2D(_ClippingMask);
 
-struct appdata
+struct Attributes
 {
-    float4 vertex : POSITION;
-    float2 uv : TEXCOORD0;
+    float4 position : POSITION;
+    float2 texcoord : TEXCOORD0;
 };
 
-struct v2f
+struct Varyings
 {
-    float4 vertex : SV_POSITION;
+    float4 positionCS : SV_POSITION;
     float2 uv : TEXCOORD;
     float3 positionWS : TEXCOORD1;
 };
 
-v2f TransparentShadowVert (appdata v)
+Varyings TransparentShadowVert(Attributes input)
 {
-    v2f o;
-    o.vertex = CharShadowObjectToHClipWithoutBias(v.vertex.xyz, (uint)_CharShadowmapIndex);
-    o.vertex.z = 1.0;
-    o.uv = v.uv;
-    o.positionWS = mul(UNITY_MATRIX_M, float4(v.vertex.xyz, 1.0));
-    return o;
+    Varyings output = (Varyings)0;
+    output.uv = input.texcoord;
+    output.positionCS = CharShadowObjectToHClipWithoutBias(input.position.xyz, (uint)_CharShadowmapIndex);
+#if UNITY_REVERSED_Z
+    output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#else
+    output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#endif
+    return output;
 }
 
-float4 TransparentShadowFragment (v2f i) : SV_Target
+float TransparentShadowFragment(Varyings input) : SV_Target
 {
-    float4 clipPos = CharShadowWorldToHClip(i.positionWS, (uint)_CharShadowmapIndex);
+    // Use A Channel for alpha sum
+    float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
+    alpha *= SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(input.uv, _ClippingMask)).r;
+    clip(alpha - 0.001);
+
+    return input.positionCS.z;   // Depth
+}
+
+
+float TransparentAlphaSumFragment(Varyings input) : SV_Target
+{
+    // Use A Channel for alpha sum
+    float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
+    alpha *= SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(input.uv, _ClippingMask)).r;
+    clip(alpha - 0.001);
+
+    float4 clipPos = CharShadowWorldToHClip(input.positionWS, (uint)_CharShadowmapIndex);
     clipPos.z = 1.0;
     float3 ndc = clipPos.xyz / clipPos.w;
     float2 ssUV = ndc.xy * 0.5 + 0.5;
@@ -48,16 +67,7 @@ float4 TransparentShadowFragment (v2f i) : SV_Target
     ssUV.y = 1.0 - ssUV.y;
 #endif
 
-    // Use A Channel for alpha sum
-    float4 color = 0;
-    color.a = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(i.uv, _MainTex)).a * _BaseColor.a;
-    float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(i.uv, _ClippingMask)).r;
-    color.a *= alphaClipVar;
-    clip(color.a - 0.001);
     // Discard behind fragment
-    color.a = lerp(color.a, 0, SampleCharacterShadowmap(ssUV, ndc.z, (uint)_CharShadowmapIndex));
-    color.r = i.vertex.z;   // Depth
-    return color;
-    // return _BaseColor.a;
+    return lerp(alpha, 0, SampleCharacterShadowmap(ssUV, ndc.z, (uint)_CharShadowmapIndex));
 }
 #endif

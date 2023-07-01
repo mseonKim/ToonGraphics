@@ -17,8 +17,9 @@ CBUFFER_START(CharShadow)
     // float _charshadowpad00_;
 CBUFFER_END
 
-TEXTURE2D_ARRAY(_CharShadowAtlas);
-SAMPLER(sampler_CharShadowAtlas);
-TEXTURE2D_ARRAY(_TransparentShadowAtlas);
+TEXTURE2D_ARRAY(_CharShadowMap);
+SAMPLER(sampler_CharShadowMap);
+TEXTURE2D_ARRAY(_TransparentShadowMap);
+TEXTURE2D_ARRAY(_TransparentAlphaSum);
 
 #endif

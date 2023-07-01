@@ -11,13 +11,13 @@
  *   Pass
  *   {
  *       Name "TransparentShadow"
- *       Tags{"LightMode" = "TransparentShadow"}
+ *       Tags {"LightMode" = "TransparentShadow"}
  *
  *       ZWrite Off
  *       ZTest Off
  *       Cull Off
- *       Blend One One, One One
- *       BlendOp Max, Add
+ *       Blend One One
+ *       BlendOp Max
  *
  *       HLSLPROGRAM
  *       #pragma target 2.0
@@ -33,11 +33,37 @@
  *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
  *       ENDHLSL
  *   }
+ *   Pass
+ *   {
+ *       Name "TransparentAlphaSum"
+ *       Tags {"LightMode" = "TransparentAlphaSum"}
+ *
+ *       ZWrite Off
+ *       ZTest Off
+ *       Cull Off
+ *       Blend One One
+ *       BlendOp Add
+ *
+ *       HLSLPROGRAM
+ *       #pragma target 2.0
+ *   
+ *       #pragma prefer_hlslcc gles
+ *       #pragma exclude_renderers d3d11_9x
+ *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *       #pragma shader_feature_local _ALPHATEST_ON
+ *
+ *       #pragma vertex TransparentShadowVert
+ *       #pragma fragment TransparentAlphaSumFragment
+ *
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
+ *       ENDHLSL
+ *   }
  */
  
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Experimental.Rendering;
 
 namespace ToonGraphics
 {
@@ -45,13 +71,17 @@ namespace ToonGraphics
     {
         /* Static Variables */
         private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("TransparentShadow");
-        private static int  s_TransparentShadowAtlasId = Shader.PropertyToID("_TransparentShadowAtlas");
+        private static readonly ShaderTagId k_AlphaSumShaderTagId = new ShaderTagId("TransparentAlphaSum");
+        private static int s_TransparentShadowMapId = Shader.PropertyToID("_TransparentShadowMap");
+        private static int s_TransparentAlphaSumId = Shader.PropertyToID("_TransparentAlphaSum");
         private static int s_ShadowMapSize = Shader.PropertyToID("_CharTransparentShadowmapSize");
         private static int s_ShadowMapIndex = Shader.PropertyToID("_CharShadowmapIndex");
+        private static int[] s_TextureSize = new int[2] { 1, 1 };
 
 
         /* Member Variables */
-        private RTHandle m_TransparentShadowRT; // R: Depth, A : Alpha Sum
+        private RTHandle m_TransparentShadowRT;
+        private RTHandle m_TransparentAlphaSumRT;
         private ProfilingSampler m_ProfilingSampler;
         private PassData m_PassData;
         private FilteringSettings m_FilteringSettings;
@@ -68,23 +98,39 @@ namespace ToonGraphics
             m_TransparentShadowRT?.Release();
         }
 
-        public void Setup(string featureName, int size, bool enableAdditionalShadow)
+        public void Setup(string featureName, in RenderingData renderingData, int scale, int precision, bool enableAdditionalShadow)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
-            m_PassData.atlasSize = size;
+            var descriptor = renderingData.cameraData.cameraTargetDescriptor;
+            s_TextureSize[0] = descriptor.width * scale; s_TextureSize[1] = descriptor.height * scale;
             m_PassData.enableAdditionalShadow = enableAdditionalShadow;
+            m_PassData.precision = precision;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            // R: Depth, A : Alpha Sum
-            var descriptor = new RenderTextureDescriptor(m_PassData.atlasSize, m_PassData.atlasSize, RenderTextureFormat.ARGBHalf, 0);
+            // Depth
+            var descriptor = new RenderTextureDescriptor(s_TextureSize[0], s_TextureSize[1], (RenderTextureFormat)m_PassData.precision, 0);
             descriptor.dimension = TextureDimension.Tex2DArray;
             descriptor.sRGB = false;
             descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
-            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"TransparentShadowAtlas");
-            cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT);
+
+            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"TransparentShadowMap");
+            cmd.SetGlobalTexture(s_TransparentShadowMapId, m_TransparentShadowRT);
+
+            // Alpha Sum
+            descriptor.graphicsFormat = GraphicsFormat.R16_SFloat;
+            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentAlphaSumRT, descriptor, FilterMode.Bilinear, name:"TransparentAlphaSum");
+            cmd.SetGlobalTexture(s_TransparentAlphaSumId, m_TransparentAlphaSumRT);
+
             m_PassData.target = m_TransparentShadowRT;
+            m_PassData.alphaSumTarget = m_TransparentAlphaSumRT;
+
+            // Set global properties
+            float invShadowMapWidth = 1.0f / s_TextureSize[0];
+            float invShadowMapHeight = 1.0f / s_TextureSize[1];
+
+            cmd.SetGlobalVector(s_ShadowMapSize, new Vector4(invShadowMapWidth, invShadowMapHeight, s_TextureSize[0], s_TextureSize[1]));
         }
 
         // Cleanup any allocated resources that were created during the execution of this render pass.
@@ -95,7 +141,6 @@ namespace ToonGraphics
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            m_PassData.shaderTagId = k_ShaderTagId;
             m_PassData.filteringSettings = m_FilteringSettings;
             m_PassData.profilingSampler = m_ProfilingSampler;
 
@@ -107,34 +152,50 @@ namespace ToonGraphics
             var cmd = CommandBufferPool.Get();
             var filteringSettings = passData.filteringSettings;
 
-            float invShadowAtlasWidth = 1.0f / passData.atlasSize;
-            float invShadowAtlasHeight = 1.0f / passData.atlasSize;
-            float invHalfShadowAtlasWidth = 0.5f * invShadowAtlasWidth;
-            float invHalfShadowAtlasHeight = 0.5f * invShadowAtlasHeight;
-
             using (new ProfilingScope(cmd, passData.profilingSampler))
             {
-                cmd.SetGlobalVector(s_ShadowMapSize, new Vector4(invShadowAtlasWidth, invShadowAtlasHeight, passData.atlasSize, passData.atlasSize));
                 cmd.SetGlobalFloat(s_ShadowMapIndex, 0);
                 CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, 0);
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
                 // Depth & Alpha Sum
-                var drawSettings = RenderingUtils.CreateDrawingSettings(passData.shaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
+                var drawSettings = RenderingUtils.CreateDrawingSettings(k_ShaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
                 context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+
+                CoreUtils.SetRenderTarget(cmd, passData.alphaSumTarget, ClearFlag.Color, 0, CubemapFace.Unknown, 0);
+                context.ExecuteCommandBuffer(cmd);
+                cmd.Clear();
+
+                var alphaDrawSettings = RenderingUtils.CreateDrawingSettings(k_AlphaSumShaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
+                context.DrawRenderers(renderingData.cullResults, ref alphaDrawSettings, ref filteringSettings);
 
                 if (passData.enableAdditionalShadow)
                 {
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
-                    for (int i = 0; i < 3; i++)
+
+                    // Depth
+                    for (int i = 0; i < CharacterShadowUtils.activeSpotLightCount; i++)
                     {
                         CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
                         cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
                         context.ExecuteCommandBuffer(cmd);
                         cmd.Clear();
                         context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+                    }
+
+                    context.ExecuteCommandBuffer(cmd);
+                    cmd.Clear();
+
+                    // Alpha sum
+                    for (int i = 0; i < CharacterShadowUtils.activeSpotLightCount; i++)
+                    {
+                        CoreUtils.SetRenderTarget(cmd, passData.alphaSumTarget, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
+                        cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
+                        context.ExecuteCommandBuffer(cmd);
+                        cmd.Clear();
+                        context.DrawRenderers(renderingData.cullResults, ref alphaDrawSettings, ref filteringSettings);
                     }
                 }
             }
@@ -145,11 +206,11 @@ namespace ToonGraphics
 
         private class PassData
         {
-            public ShaderTagId shaderTagId;
             public FilteringSettings filteringSettings;
             public ProfilingSampler profilingSampler;
             public RTHandle target;
-            public int atlasSize;
+            public RTHandle alphaSumTarget;
+            public int precision;
             public bool enableAdditionalShadow;
         }
     }
