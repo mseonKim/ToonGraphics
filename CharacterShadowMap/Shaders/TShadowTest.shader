@@ -76,6 +76,7 @@ Shader "Unlit/TShadowTest"
 
             HLSLPROGRAM
             #pragma target 2.0
+
 	    
             // Required to compile gles 2.0 with standard srp library
             #pragma prefer_hlslcc gles
@@ -85,7 +86,13 @@ Shader "Unlit/TShadowTest"
 
             #pragma vertex TransparentShadowVert
             #pragma fragment TransparentShadowFragment
-
+            
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            float4 _BaseColor;
+            float4 _MainTex_ST;
+            float4 _ClippingMask_ST;
+            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+            TEXTURE2D(_ClippingMask);
             #include "TransparentShadowPass.hlsl"
             ENDHLSL
         }

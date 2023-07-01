@@ -82,8 +82,8 @@ namespace ToonGraphics
             descriptor.dimension = TextureDimension.Tex2DArray;
             descriptor.sRGB = false;
             descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
-            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"_TransparentShadowAtlas");
-            cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT.nameID);
+            RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"TransparentShadowAtlas");
+            cmd.SetGlobalTexture(s_TransparentShadowAtlasId, m_TransparentShadowRT);
             m_PassData.target = m_TransparentShadowRT;
         }
 

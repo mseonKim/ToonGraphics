@@ -83,6 +83,14 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			#pragma vertex TransparentShadowVert
 			#pragma fragment TransparentShadowFragment
 	
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+			CBUFFER_START(UnityPerMaterial)
+			float4 _BaseColor;
+			float4 _MainTex_ST;
+			float4 _ClippingMask_ST;
+			CBUFFER_END
+			TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+			TEXTURE2D(_ClippingMask);
 			#include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
 			ENDHLSL
 		}

@@ -4,27 +4,6 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Input.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
-CBUFFER_START(CharShadow)
-    float4 _CharShadowBias;                 // x: main depth , y: main normal , z: local depth , w: local normal
-    float4x4 _CharShadowViewM[4];
-    float4x4 _CharShadowProjM;
-    float4 _CharShadowOffset0;
-    float4 _CharShadowOffset1;
-    float4 _CharShadowmapSize;
-    float4 _CharTransparentShadowmapSize;
-    float4 _CharShadowStepOffset;           // x: main , y: local
-    float4 _CharShadowLightDirections[3];   // Additional Lights (= MainLight not included)
-    float _CharShadowmapIndex;
-    float _CharShadowLocalLightIndices[3];
-    // float _LocalLightToCharShadowIdxTable[3];
-    // float _charshadowpad00_;
-CBUFFER_END
-
-TEXTURE2D_ARRAY(_CharShadowAtlas);
-SAMPLER(sampler_CharShadowAtlas);
-TEXTURE2D_ARRAY(_TransparentShadowAtlas);
-// SAMPLER(sampler_TransparentShadowAtlas);
-
 #define MAX_CHAR_SHADOWMAPS 4
 
 half LinearStep_(float m, float M, float x)
@@ -32,57 +11,11 @@ half LinearStep_(float m, float M, float x)
     return saturate((x - m) / (M - m));
 }
 
-float3 ApplyCharShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection, uint shadowmapIdx)
-{
-    bool isLocal = shadowmapIdx > 0;
-    float depthBias = lerp(_CharShadowBias.x, _CharShadowBias.z, isLocal);
-    float normalBias = lerp(_CharShadowBias.y, _CharShadowBias.w, isLocal);
-
-    // Depth Bias
-    positionWS = lightDirection * depthBias.xxx + positionWS;
-
-    // Normal Bias
-    // float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
-    // float scale = invNdotL * -normalBias;
-    float scale = normalBias;
-    positionWS = normalWS * scale.xxx + positionWS;
-    return positionWS;
-}
-
-float4 CharShadowWorldToView(float3 positionWS, uint shadowmapIdx = 0)
-{
-    return mul(_CharShadowViewM[shadowmapIdx], float4(positionWS, 1.0));
-}
-float4 CharShadowViewToHClip(float4 positionVS)
-{
-    return mul(_CharShadowProjM, positionVS);
-}
-float4 CharShadowWorldToHClip(float3 positionWS, uint shadowmapIdx = 0)
-{
-    return CharShadowViewToHClip(CharShadowWorldToView(positionWS, shadowmapIdx));
-}
-float4 CharShadowObjectToHClip(float3 positionOS, float3 normalWS, uint shadowmapIdx = 0)
-{
-    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0));
-
-    // TODO: SUPPORT ADDITIONAL LIGHT DIRECITON
-    if (shadowmapIdx == 0)
-        positionWS = ApplyCharShadowBias(positionWS, normalWS, _MainLightPosition.xyz, 0);
-    else
-        positionWS = ApplyCharShadowBias(positionWS, normalWS, _CharShadowLightDirections[shadowmapIdx - 1], shadowmapIdx);
-    return CharShadowWorldToHClip(positionWS, shadowmapIdx);
-}
-float4 CharShadowObjectToHClipWithoutBias(float3 positionOS, uint shadowmapIdx = 0)
-{
-    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0));
-    return CharShadowWorldToHClip(positionWS, shadowmapIdx);
-}
-
 
 half SampleCharacterShadowmap(float2 uv, float z, uint shadowmapIdx = 0)
 {
     float var = SAMPLE_TEXTURE2D_ARRAY(_CharShadowAtlas, sampler_CharShadowAtlas, uv, shadowmapIdx).r;
-    return var > z;
+    return var - z > lerp(_CharShadowBias.x, _CharShadowBias.z, shadowmapIdx > 0);
 }
 
 half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
@@ -115,7 +48,9 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
 
     // return attenuation;
     float offset = lerp(_CharShadowStepOffset.x, _CharShadowStepOffset.y, shadowmapIdx > 0);
-    return LinearStep_(offset - 0.1, offset, attenuation);
+//     return lerp(0, smoothstep(0, 1, attenuation), attenuation > offset);
+    // return LinearStep_(offset - 0.1, offset, attenuation);
+    return smoothstep(0, 1, attenuation);
 }
 
 

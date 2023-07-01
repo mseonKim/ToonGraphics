@@ -2,7 +2,19 @@
 #define TRANSPARENT_SHADOW_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+#include "CharacterShadowInput.hlsl"
+#include "CharacterShadowTransforms.hlsl"
 #include "DeclareCharacterShadowTexture.hlsl"
+
+// Below material properties must be declared in seperate shader input to make compatible with SRP Batcher.
+// CBUFFER_START(UnityPerMaterial)
+// float4 _BaseColor;
+// float4 _MainTex_ST;
+// float4 _ClippingMask_ST;
+// CBUFFER_END
+// TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+// TEXTURE2D(_ClippingMask);
+
 struct appdata
 {
     float4 vertex : POSITION;
@@ -15,12 +27,6 @@ struct v2f
     float2 uv : TEXCOORD;
     float3 positionWS : TEXCOORD1;
 };
-
-float4 _BaseColor;
-float4 _MainTex_ST;
-float4 _ClippingMask_ST;
-TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
-TEXTURE2D(_ClippingMask);
 
 v2f TransparentShadowVert (appdata v)
 {

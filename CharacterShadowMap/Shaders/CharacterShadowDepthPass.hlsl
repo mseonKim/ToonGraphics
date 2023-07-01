@@ -2,7 +2,15 @@
 #define CHARACTER_SHADOW_DEPTH_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-#include "DeclareCharacterShadowTexture.hlsl"
+#include "CharacterShadowInput.hlsl"
+#include "CharacterShadowTransforms.hlsl"
+
+// Below material properties must be declared in seperate shader input to make compatible with SRP Batcher.
+// CBUFFER_START(UnityPerMaterial)
+//     float4 _ClippingMask_ST;
+// CBUFFER_END
+// TEXTURE2D(_ClippingMask);
+SAMPLER(sampler_ClippingMask);
 
 struct Attributes
 {
@@ -21,9 +29,6 @@ struct Varyings
     // UNITY_VERTEX_OUTPUT_STEREO
 };
 
-float4 _ClippingMask_ST;
-TEXTURE2D(_ClippingMask); SAMPLER(sampler_ClippingMask);
-
 Varyings CharShadowVertex(Attributes input)
 {
     Varyings output = (Varyings)0;
@@ -38,6 +43,7 @@ Varyings CharShadowVertex(Attributes input)
 #else
     output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #endif
+    // output.positionWS = TransformObjectToWorld(input.position.xyz);
     return output;
 }
 
@@ -47,9 +53,6 @@ float CharShadowFragment(Varyings input) : SV_TARGET
 
     float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_ClippingMask, input.uv).r;
     clip(alphaClipVar- 0.001);
-    // uint idx = (uint)_CharShadowmapIndex;
-    // float4 output = input.positionCS.z;
-    // output *= float4(idx == 0, idx == 1, idx == 2, idx == 3);
     
     return input.positionCS.z;
 }

@@ -61,17 +61,17 @@ namespace ToonGraphics
             descriptor.dimension = TextureDimension.Tex2DArray;
             descriptor.sRGB = false;
             descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
-            RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"_CharShadowAtlas");
-            cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT.nameID);
+            RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"CharShadowAtlas");
+            cmd.SetGlobalTexture(s_CharShadowAtlasId, m_CharShadowRT);
 
             m_PassData.target = m_CharShadowRT;
             CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData);
 
             var lightCameras = CharShadowCamera.Instance.lightCameras;
-            int length = lightCameras.Length;
-            m_PassData.viewM = new Matrix4x4[length];
             if (lightCameras != null && lightCameras[0] != null)
             {
+                int length = lightCameras.Length;
+                m_PassData.viewM = new Matrix4x4[length];
                 float widthScale = (float)Screen.width / (float)Screen.height;
                 m_PassData.projectM = lightCameras[0].projectionMatrix;
                 for (int i = 0; i < length; i++)
@@ -140,11 +140,13 @@ namespace ToonGraphics
                     var lightCameras = CharShadowCamera.Instance.lightCameras;
                     for (int i = 0; i < 3; i++)
                     {
+                        if (lightCameras[i + 1] == null)
+                            continue;
+                        charShadowDirections[i] = lightCameras[i + 1].transform.rotation * Vector3.forward;
                         CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
                         cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
                         context.ExecuteCommandBuffer(cmd);
                         cmd.Clear();
-                        charShadowDirections[i] = lightCameras[i + 1].transform.rotation * Vector3.forward;
                         context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
                     }
                     cmd.SetGlobalVectorArray(s_CharShadowLightDirections, charShadowDirections);
