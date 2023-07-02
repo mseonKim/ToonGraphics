@@ -7,8 +7,8 @@ CBUFFER_START(CharShadow)
     float4x4 _CharShadowProjM;
     float4 _CharShadowOffset0;
     float4 _CharShadowOffset1;
-    float4 _CharShadowmapSize;
-    float4 _CharTransparentShadowmapSize;
+    float4 _CharShadowmapSize;              // rcp(width), rcp(height), width, height
+    float4 _CharTransparentShadowmapSize;   // rcp(width), rcp(height), width, height
     float4 _CharShadowStepOffset;           // x: main , y: local
     float4 _CharShadowLightDirections[3];   // Additional Lights (= MainLight not included)
     float _CharShadowmapIndex;

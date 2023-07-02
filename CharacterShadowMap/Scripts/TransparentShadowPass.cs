@@ -5,7 +5,7 @@
 
 /// How to use
 /// 1. Add pass in your shader to use 'TransparentShadowPass.hlsl'
-///    with "TransparentShadow" LightMode. (See below example)
+///    with "TransparentShadow" and "TransparentAlphaSum" LightMode. (See below example)
 /* [Pass Example - Unity Toon Shader]
  * NOTE) We assume that the shader use "_MainTex" and "_BaseColor", "_ClippingMask" properties.
  *   Pass
@@ -98,13 +98,14 @@ namespace ToonGraphics
             m_TransparentShadowRT?.Release();
         }
 
-        public void Setup(string featureName, in RenderingData renderingData, int scale, int precision, bool enableAdditionalShadow)
+        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
+            var scale = (int)config.transparentTextureScale;
             s_TextureSize[0] = descriptor.width * scale; s_TextureSize[1] = descriptor.height * scale;
-            m_PassData.enableAdditionalShadow = enableAdditionalShadow;
-            m_PassData.precision = precision;
+            m_PassData.enableAdditionalShadow = config.enableAdditionalShadow;
+            m_PassData.precision = (int)config.precision;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)

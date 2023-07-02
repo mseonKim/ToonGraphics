@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26fa71aeef3fbd442b561d36aa95f04e, type: 3}
+  m_Name: Character Shadow Config
+  m_EditorClassIdentifier: 
+  enableTransparentShadow: 1
+  enableAdditionalShadow: 1
+  bias: 0.0003
+  normalBias: 0.003
+  additionalBias: 0.0003
+  additionalNormalBias: 0
+  stepOffset: 0.99
+  additionalStepOffset: 0.99
+  textureScale: 4
+  transparentTextureScale: 2
+  precision: 14
+  softShadowMode: 1

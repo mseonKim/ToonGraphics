@@ -1,3 +1,33 @@
+/// How to use
+/// 1. Add 'CharacterShadowCamera' prefab to your scene.
+/// 2. Add pass in your shader to use 'CharacterShadowDepthPass.hlsl' with "CharacterDepth" LightMode. (See below example)
+/* [Pass Example - Unity Toon Shader]
+ * NOTE) We assume that the shader use "_ClippingMask" property.
+ * Pass
+ *   {
+ *       Name "CharacterDepth"
+ *       Tags{"LightMode" = "CharacterDepth"}
+ *
+ *       ZWrite On
+ *       ZTest LEqual
+ *       Cull Off
+ *
+ *       HLSLPROGRAM
+ *       #pragma target 2.0
+ *   
+ *       // Required to compile gles 2.0 with standard srp library
+ *       #pragma prefer_hlslcc gles
+ *       #pragma exclude_renderers d3d11_9x
+ *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+ *
+ *       #pragma vertex CharShadowVertex
+ *       #pragma fragment CharShadowFragment
+ *
+ *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/CharacterShadowDepthPass.hlsl"
+ *       ENDHLSL
+ *   }
+ */
+
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -30,6 +60,7 @@ namespace ToonGraphics
         private ProfilingSampler m_ProfilingSampler;
         private PassData m_PassData;
         private static int[] s_TextureSize = new int[2] { 1, 1 };
+        private CharSoftShadowMode m_SoftShadowMode;
 
         private FilteringSettings m_FilteringSettings;
         
@@ -47,15 +78,17 @@ namespace ToonGraphics
             m_CharShadowRT?.Release();
         }
 
-        public void Setup(string featureName, in RenderingData renderingData, Vector4 bias, Vector2 stepOffset, int scale, int precision, bool enableAdditionalShadow)
+        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
-            m_PassData.bias = bias;
-            m_PassData.stepOffset = stepOffset;
+            m_PassData.bias = new Vector4(config.bias, config.normalBias, config.additionalBias, config.additionalNormalBias);
+            m_PassData.stepOffset = new Vector2(config.stepOffset, config.additionalStepOffset);
+            var scale = (int)config.textureScale;
             s_TextureSize[0] = descriptor.width * scale; s_TextureSize[1] = descriptor.height * scale;
-            m_PassData.precision = precision;
-            m_PassData.enableAdditionalShadow = enableAdditionalShadow;
+            m_PassData.precision = (int)config.precision;
+            m_PassData.enableAdditionalShadow = config.enableAdditionalShadow;
+            m_SoftShadowMode = config.softShadowMode;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -101,6 +134,7 @@ namespace ToonGraphics
             cmd.SetGlobalVector(IDs._ShadowOffset1, new Vector4(-invHalfShadowMapWidth, invHalfShadowMapHeight, invHalfShadowMapWidth, invHalfShadowMapHeight));
             cmd.SetGlobalVector(IDs._ShadowMapSize, new Vector4(invShadowMapWidth, invShadowMapHeight, s_TextureSize[0], s_TextureSize[1]));
             cmd.SetGlobalVector(IDs._ShadowStepOffset, m_PassData.stepOffset);
+            CoreUtils.SetKeyword(cmd, "_HIGH_CHAR_SOFTSHADOW", m_SoftShadowMode == CharSoftShadowMode.High);
         }
 
         // Cleanup any allocated resources that were created during the execution of this render pass.
