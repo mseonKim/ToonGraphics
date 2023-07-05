@@ -27,6 +27,9 @@ namespace ToonGraphics
             if (config == null)
                 return;
 
+            if (!CharacterShadowUtils.IfCharShadowUpdateNeeded(renderingData))
+                return;
+
             // Additional shadow is only available in forward+
             var additionalShadowEnabled = urpData != null ? config.enableAdditionalShadow && urpData.renderingMode == RenderingMode.ForwardPlus : false;
             m_CharShadowPass.Setup("CharacterShadowMapRendererFeature", renderingData, config);

@@ -11,10 +11,23 @@ namespace ToonGraphics
     public static class CharacterShadowUtils
     {
         public static int activeSpotLightCount = 0;
+        private const float CHAR_SHADOW_CULLING_DIST = 18.0f;
         private static List<VisibleLight> s_vSpotLights = new List<VisibleLight>(256);
         private static List<int> s_vSpotLightIndices = new List<int>(256);
         private static List<KeyValuePair<float, int>> s_SortedSpotLights = new List<KeyValuePair<float, int>>(256);
         private static int s_CharShadowLocalLightIndices = Shader.PropertyToID("_CharShadowLocalLightIndices");
+
+        public static bool IfCharShadowUpdateNeeded(in RenderingData renderingData)
+        {
+            var cameraWorldPos = renderingData.cameraData.camera.transform.position;
+            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.target == null)
+            {
+                return false;
+            }
+            var charWorldPos = CharShadowCamera.Instance.target.position;
+            var diff = Vector3.Distance(cameraWorldPos,charWorldPos);
+            return diff < CHAR_SHADOW_CULLING_DIST;
+        }
 
         public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData)
         {
