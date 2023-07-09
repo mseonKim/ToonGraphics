@@ -21,6 +21,7 @@ MonoBehaviour:
   stepOffset: 0.99
   additionalStepOffset: 0.99
   textureScale: 4
-  transparentTextureScale: 2
+  transparentTextureScale: 4
   precision: 14
   softShadowMode: 0
+  cascadeSplit: {x: 3.5, y: 7, z: 11, w: 20}

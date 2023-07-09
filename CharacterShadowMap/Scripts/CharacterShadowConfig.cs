@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace ToonGraphics
@@ -37,5 +36,6 @@ namespace ToonGraphics
         public CustomShadowMapSize transparentTextureScale = CustomShadowMapSize.X2;
         public CustomShadowMapPrecision precision = CustomShadowMapPrecision.RFloat;
         public CharSoftShadowMode softShadowMode = CharSoftShadowMode.Normal;
+        public Vector4 cascadeSplit = new Vector4(2, 6, 14, 20);
     }
 }

@@ -43,6 +43,7 @@ Varyings CharShadowVertex(Attributes input)
 #else
     output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #endif
+    output.positionCS.xy *= _CharShadowCascadeParams.y;
     // output.positionWS = TransformObjectToWorld(input.position.xyz);
     return output;
 }

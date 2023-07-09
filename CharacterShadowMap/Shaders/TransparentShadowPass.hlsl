@@ -38,6 +38,7 @@ Varyings TransparentShadowVert(Attributes input)
 #else
     output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #endif
+    output.positionCS.xy *= _CharShadowCascadeParams.y;
     return output;
 }
 

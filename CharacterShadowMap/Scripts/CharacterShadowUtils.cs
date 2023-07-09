@@ -29,6 +29,27 @@ namespace ToonGraphics
             return diff < CHAR_SHADOW_CULLING_DIST;
         }
 
+        ///<returns>
+        /// CharShadowMap Cascade index - 1(near), 0.5, 0.25, 0.125(far)
+        ///</returns>
+        public static float FindCascadedShadowMapResolutionScale(in RenderingData renderingData, Vector4 cascadeSplit)
+        {
+            var cameraWorldPos = renderingData.cameraData.camera.transform.position;
+            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.target == null)
+            {
+                return 0.125f;
+            }
+            var charWorldPos = CharShadowCamera.Instance.target.position;
+            var diff = Vector3.Distance(cameraWorldPos,charWorldPos);
+            if (diff < cascadeSplit.x)
+                return 1f;
+            else if (diff < cascadeSplit.y)
+                return 0.5f;
+            else if (diff < cascadeSplit.z)
+                return 0.25f;
+            return 0.125f;
+        }
+
         public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData);

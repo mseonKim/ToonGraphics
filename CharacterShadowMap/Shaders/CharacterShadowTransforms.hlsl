@@ -1,7 +1,9 @@
 #ifndef CHARACTER_SHADOW_TRANSFORMS_INCLUDED
 #define CHARACTER_SHADOW_TRANSFORMS_INCLUDED
 
-#define CHAR_SHADOW_CULLING_DIST -17.0 // should be less than -18(renderer feature's const value) 
+#include "./CharacterShadowInput.hlsl"
+
+#define _CharShadowCullingDist -(_CharShadowCascadeParams.x - 2) // should be less than renderer feature's max cascade split value 
 
 float3 ApplyCharShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection, uint shadowmapIdx)
 {
@@ -51,7 +53,7 @@ float4 CharShadowObjectToHClipWithoutBias(float3 positionOS, uint shadowmapIdx =
 // Skip if too far (since we don't use mipmap for charshadowmap, manually cull this calculation based on view depth.)
 bool IfCharShadowCulled(float viewPosZ)
 {
-    return viewPosZ < CHAR_SHADOW_CULLING_DIST;
+    return viewPosZ < _CharShadowCullingDist;
 }
 
 #endif

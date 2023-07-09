@@ -103,7 +103,8 @@ namespace ToonGraphics
             m_ProfilingSampler = new ProfilingSampler(featureName);
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
             var scale = (int)config.transparentTextureScale;
-            s_TextureSize[0] = descriptor.width * scale; s_TextureSize[1] = descriptor.height * scale;
+            s_TextureSize[0] = descriptor.width * scale;
+            s_TextureSize[1] = descriptor.height * scale;
             m_PassData.enableAdditionalShadow = config.enableAdditionalShadow;
             m_PassData.precision = (int)config.precision;
         }

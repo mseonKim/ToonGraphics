@@ -52,6 +52,7 @@ namespace ToonGraphics
             public static int _ShadowStepOffset = Shader.PropertyToID("_CharShadowStepOffset");
             public static int _ShadowMapIndex = Shader.PropertyToID("_CharShadowmapIndex");
             public static int _CharShadowLightDirections = Shader.PropertyToID("_CharShadowLightDirections");
+            public static int _CharShadowCascadeParams = Shader.PropertyToID("_CharShadowCascadeParams");
         }
 
 
@@ -61,6 +62,8 @@ namespace ToonGraphics
         private PassData m_PassData;
         private static int[] s_TextureSize = new int[2] { 1, 1 };
         private CharSoftShadowMode m_SoftShadowMode;
+        private float m_cascadeResolutionScale = 1f;
+        private float m_cascadeMaxDistance;
 
         private FilteringSettings m_FilteringSettings;
         
@@ -85,7 +88,10 @@ namespace ToonGraphics
             m_PassData.bias = new Vector4(config.bias, config.normalBias, config.additionalBias, config.additionalNormalBias);
             m_PassData.stepOffset = new Vector2(config.stepOffset, config.additionalStepOffset);
             var scale = (int)config.textureScale;
-            s_TextureSize[0] = descriptor.width * scale; s_TextureSize[1] = descriptor.height * scale;
+            m_cascadeResolutionScale = CharacterShadowUtils.FindCascadedShadowMapResolutionScale(renderingData, config.cascadeSplit);
+            m_cascadeMaxDistance = config.cascadeSplit.w;
+            s_TextureSize[0] = descriptor.width * scale;
+            s_TextureSize[1] = descriptor.height * scale;
             m_PassData.precision = (int)config.precision;
             m_PassData.enableAdditionalShadow = config.enableAdditionalShadow;
             m_SoftShadowMode = config.softShadowMode;
@@ -134,6 +140,7 @@ namespace ToonGraphics
             cmd.SetGlobalVector(IDs._ShadowOffset1, new Vector4(-invHalfShadowMapWidth, invHalfShadowMapHeight, invHalfShadowMapWidth, invHalfShadowMapHeight));
             cmd.SetGlobalVector(IDs._ShadowMapSize, new Vector4(invShadowMapWidth, invShadowMapHeight, s_TextureSize[0], s_TextureSize[1]));
             cmd.SetGlobalVector(IDs._ShadowStepOffset, m_PassData.stepOffset);
+            cmd.SetGlobalVector(IDs._CharShadowCascadeParams, new Vector4(m_cascadeMaxDistance, m_cascadeResolutionScale, 0, 0));
             CoreUtils.SetKeyword(cmd, "_HIGH_CHAR_SOFTSHADOW", m_SoftShadowMode == CharSoftShadowMode.High);
         }
 
