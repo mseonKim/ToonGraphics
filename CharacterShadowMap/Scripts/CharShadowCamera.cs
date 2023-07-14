@@ -37,12 +37,12 @@ namespace ToonGraphics
         // Start is called before the first frame update
         void Start()
         {
-            // RefreshSceneLights();
+            RefreshSceneLights();
         }
 
         void LateUpdate()
         {
-            // RefreshLightCameraTransforms();
+            RefreshLightCameraTransforms();
         }
 
         ///<summary>

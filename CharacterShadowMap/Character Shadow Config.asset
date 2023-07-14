@@ -16,12 +16,12 @@ MonoBehaviour:
   enableAdditionalShadow: 1
   bias: 0.0003
   normalBias: 0.003
-  additionalBias: 0.0003
-  additionalNormalBias: 0
+  additionalBias: 0.0006
+  additionalNormalBias: 0.001
   stepOffset: 0.99
   additionalStepOffset: 0.99
   textureScale: 4
-  transparentTextureScale: 4
+  transparentTextureScale: 2
   precision: 14
   softShadowMode: 0
   cascadeSplit: {x: 3.5, y: 7, z: 11, w: 20}

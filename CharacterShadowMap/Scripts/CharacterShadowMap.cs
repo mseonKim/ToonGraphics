@@ -11,6 +11,7 @@ namespace ToonGraphics
         private CharacterShadowPass m_CharShadowPass;
         private TransparentShadowPass m_CharTransparentShadowPass;
         public CharacterShadowConfig config;
+        [Tooltip("Link this renderer data")]
         public UniversalRendererData urpData;
 
 

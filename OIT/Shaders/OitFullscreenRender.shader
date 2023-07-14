@@ -22,7 +22,7 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
-			#include "LinkedListRendering.hlsl"
+			#include "./LinkedListRendering.hlsl"
 
 			SAMPLER(sampler_BlitTexture);
 

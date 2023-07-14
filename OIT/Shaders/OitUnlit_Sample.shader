@@ -24,7 +24,7 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			// #pragma enable_d3d11_debug_symbols
 
 			#include "UnityCG.cginc"
-    		#include "LinkedListCreation.hlsl"
+    		#include "./LinkedListCreation.hlsl"
 
 			sampler2D _MainTex;
             float4 _MainTex_ST;
