@@ -36,17 +36,17 @@ float4 CharShadowWorldToHClip(float3 positionWS, uint shadowmapIdx = 0)
 }
 float4 CharShadowObjectToHClip(float3 positionOS, float3 normalWS, uint shadowmapIdx = 0)
 {
-    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0));
+    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0)).xyz;
 
     if (shadowmapIdx == 0)
         positionWS = ApplyCharShadowBias(positionWS, normalWS, _MainLightPosition.xyz, 0);
     else
-        positionWS = ApplyCharShadowBias(positionWS, normalWS, _CharShadowLightDirections[shadowmapIdx - 1], shadowmapIdx);
+        positionWS = ApplyCharShadowBias(positionWS, normalWS, _CharShadowLightDirections[shadowmapIdx - 1].xyz, shadowmapIdx);
     return CharShadowWorldToHClip(positionWS, shadowmapIdx);
 }
 float4 CharShadowObjectToHClipWithoutBias(float3 positionOS, uint shadowmapIdx = 0)
 {
-    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0));
+    float3 positionWS = mul(UNITY_MATRIX_M, float4(positionOS, 1.0)).xyz;
     return CharShadowWorldToHClip(positionWS, shadowmapIdx);
 }
 

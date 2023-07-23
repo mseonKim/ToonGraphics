@@ -190,14 +190,12 @@ half GetLocalCharacterShadowmapForVoxelLighting(float3 worldPos, int lightIndex 
 #endif
     uint i;
     ADDITIONAL_CHARSHADOW_CHECK(i, lightIndex)
-        
-    if (IfCharShadowCulled(TransformWorldToView(worldPos).z))
-        return 0;
 
     float3 coord = TransformWorldToCharShadowCoord(worldPos, i);
     float2 uv = coord.xy;
+    coord.z = max(coord.z, 0.001f);
     ScaleUVForCascadeCharShadow(uv);
-    return SampleCharacterShadowmap(uv, coord.z, i);
+    return SAMPLE_TEXTURE2D_ARRAY_LOD(_CharShadowMap, sampler_CharShadowMap, uv, i, 0).r > coord.z;
 }
 
 #endif
