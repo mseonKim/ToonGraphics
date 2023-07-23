@@ -2,7 +2,6 @@
 #define CHARACTER_SHADOW_DEPTH_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-#include "CharacterShadowInput.hlsl"
 #include "CharacterShadowTransforms.hlsl"
 
 // Below material properties must be declared in seperate shader input to make compatible with SRP Batcher.
