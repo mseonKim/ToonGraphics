@@ -4,6 +4,7 @@ Shader "ToonEye"
     {
         [MainColor] _BaseColor("Color", Color) = (1,1,1,1)
         [MainTexture] _BaseMap("Texture", 2D) = "white" {}
+        _Exposure("Exposure", Range(0, 10)) = 1
         _HiLightTex("Texture", 2D) = "white" {}
         _ShadeStep("ShadeStep", Range(0, 1)) = 0.5
         _ShadeStepOffset("ShadeStepOffset", Range(0, 1)) = 0.01
@@ -50,6 +51,7 @@ Shader "ToonEye"
             float4 _HiLightTex_ST;
             float4 _EyeForward;
             float4 _EyeUp;
+            float _Exposure;
             float _RefractionWeight;
             float _Refraction;
             float _ShadeStep;
@@ -58,7 +60,7 @@ Shader "ToonEye"
             float _Metallic;
             float _MaxAdditionalLightIntensity;
             CBUFFER_END
-            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_linear_mirror);
             TEXTURE2D(_HiLightTex);
 
             struct Attributes
@@ -124,8 +126,10 @@ Shader "ToonEye"
                 uv += lerp(0, offset.xy * _RefractionWeight, _Refraction);
 
                 half4 color = _BaseColor;
-                half4 _BaseMap_var = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, TRANSFORM_TEX(uv, _BaseMap));
+                half4 _BaseMap_var = SAMPLE_TEXTURE2D(_BaseMap, sampler_linear_mirror, TRANSFORM_TEX(uv, _BaseMap));
                 color *= _BaseMap_var;
+                // Base Exposure
+                color.rgb *= _Exposure;
 
                 half alpha = 0;
                 BRDFData brdfData;
@@ -133,8 +137,8 @@ Shader "ToonEye"
                 uint meshRenderingLayers = GetMeshRenderingLayer();
                 float3 normalWS = F;
 
-                // High light
-                half4 _HiLightTex_var = SAMPLE_TEXTURE2D(_HiLightTex, sampler_BaseMap, TRANSFORM_TEX(uv, _HiLightTex));
+                // TODO: High light
+                half4 _HiLightTex_var = SAMPLE_TEXTURE2D(_HiLightTex, sampler_linear_mirror, TRANSFORM_TEX(uv, _HiLightTex));
 
                 // Main Light
                 Light mainLight = GetMainLight();
@@ -174,7 +178,7 @@ Shader "ToonEye"
                         float lightIntensity = 0.299 * light.color.r + 0.587 * light.color.g + 0.114 * light.color.b;
                         light.color *= lerp(rcp(lightIntensity) * _MaxAdditionalLightIntensity, 1, lightIntensity < _MaxAdditionalLightIntensity);
                         half3 c = light.color * light.distanceAttenuation;
-                        additionalLightsColor += lerp(0, c, saturate((halfLambert - m) / (M - m)));
+                        additionalLightsColor += _BaseMap_var * lerp(0, c, saturate((halfLambert - m) / (M - m))) * _Exposure;
                     }
                 }
             #endif
@@ -194,7 +198,7 @@ Shader "ToonEye"
                         float lightIntensity = 0.299 * light.color.r + 0.587 * light.color.g + 0.114 * light.color.b;
                         light.color *= lerp(rcp(lightIntensity) * _MaxAdditionalLightIntensity, 1, lightIntensity < _MaxAdditionalLightIntensity);
                         half3 c = light.color * light.distanceAttenuation;
-                        additionalLightsColor += lerp(0, c, saturate((halfLambert - m) / (M - m)));
+                        additionalLightsColor += _BaseMap_var * lerp(0, c, saturate((halfLambert - m) / (M - m))) * _Exposure;
                     }
                 LIGHT_LOOP_END
 

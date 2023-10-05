@@ -18,20 +18,15 @@ namespace ToonGraphics
         {
             renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
             orderIndependentTransparency = new OitLinkedList(oitComputeUtilsCS);
-            RenderPipelineManager.beginContextRendering += PreRender;
             this.material = material;
         }
 
-        private void PreRender(ScriptableRenderContext context, List<Camera> cameras)
+        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            CommandBuffer cmd = CommandBufferPool.Get();
-            cmd.Clear();
             using (new ProfilingScope(cmd, new ProfilingSampler("Order Independent Transparency PreRender")))
             {
                 orderIndependentTransparency.PreRender(cmd);
             }
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
         }
 
         public void Setup(in RenderingData renderingData)
@@ -75,7 +70,6 @@ namespace ToonGraphics
         {
             orderIndependentTransparency.Release();
             m_CopiedColor?.Release();
-            RenderPipelineManager.beginContextRendering -= PreRender;
         }
     }
 

@@ -31,6 +31,10 @@ namespace ToonGraphics
             if (!CharacterShadowUtils.IfCharShadowUpdateNeeded(renderingData))
                 return;
 
+            // To draw only once for each frame
+            if (renderingData.cameraData.camera != Camera.main)
+                return;
+
             // Additional shadow is only available in forward+
             var additionalShadowEnabled = urpData != null ? config.enableAdditionalShadow && urpData.renderingMode == RenderingMode.ForwardPlus : false;
             m_CharShadowPass.Setup("CharacterShadowMapRendererFeature", renderingData, config);
