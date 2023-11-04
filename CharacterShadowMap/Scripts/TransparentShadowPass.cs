@@ -52,7 +52,7 @@
  *       #pragma shader_feature_local _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
  *       #pragma shader_feature_local _ALPHATEST_ON
  *
- *       #pragma vertex TransparentShadowVert
+ *       #pragma vertex TransparentAlphaSumVert
  *       #pragma fragment TransparentAlphaSumFragment
  *
  *       #include "Packages/com.unity.toongraphics/CharacterShadowMap/Shaders/TransparentShadowPass.hlsl"
@@ -96,6 +96,7 @@ namespace ToonGraphics
         public void Dispose()
         {
             m_TransparentShadowRT?.Release();
+            m_TransparentAlphaSumRT?.Release();
         }
 
         public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config)

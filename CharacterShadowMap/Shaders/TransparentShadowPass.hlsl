@@ -19,16 +19,22 @@ struct Attributes
     float2 texcoord : TEXCOORD0;
 };
 
-struct Varyings
+struct ShadowVaryings
+{
+    float4 positionCS : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+
+struct AlphaSumVaryings
 {
     float4 positionCS : SV_POSITION;
     float2 uv : TEXCOORD;
     float3 positionWS : TEXCOORD1;
 };
 
-Varyings TransparentShadowVert(Attributes input)
+ShadowVaryings TransparentShadowVert(Attributes input)
 {
-    Varyings output = (Varyings)0;
+    ShadowVaryings output = (ShadowVaryings)0;
     output.uv = input.texcoord;
     output.positionCS = CharShadowObjectToHClipWithoutBias(input.position.xyz, (uint)_CharShadowmapIndex);
 #if UNITY_REVERSED_Z
@@ -40,7 +46,22 @@ Varyings TransparentShadowVert(Attributes input)
     return output;
 }
 
-float TransparentShadowFragment(Varyings input) : SV_Target
+AlphaSumVaryings TransparentAlphaSumVert(Attributes input)
+{
+    AlphaSumVaryings output = (AlphaSumVaryings)0;
+    output.uv = input.texcoord;
+    output.positionCS = CharShadowObjectToHClipWithoutBias(input.position.xyz, (uint)_CharShadowmapIndex);
+#if UNITY_REVERSED_Z
+    output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#else
+    output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+#endif
+    output.positionCS.xy *= _CharShadowCascadeParams.y;
+    output.positionWS = TransformObjectToWorld(input.position.xyz);
+    return output;
+}
+
+float TransparentShadowFragment(ShadowVaryings input) : SV_Target
 {
     // Use A Channel for alpha sum
     float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
@@ -51,14 +72,15 @@ float TransparentShadowFragment(Varyings input) : SV_Target
 }
 
 
-float TransparentAlphaSumFragment(Varyings input) : SV_Target
+float TransparentAlphaSumFragment(AlphaSumVaryings input) : SV_Target
 {
     // Use A Channel for alpha sum
     float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
     alpha *= SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(input.uv, _ClippingMask)).r;
     clip(alpha - 0.001);
 
-    float4 clipPos = CharShadowWorldToHClip(input.positionWS, (uint)_CharShadowmapIndex);
+    uint index = (uint)_CharShadowmapIndex;
+    float4 clipPos = CharShadowWorldToHClip(input.positionWS, index);
     clipPos.z = 1.0;
     float3 ndc = clipPos.xyz / clipPos.w;
     float2 ssUV = ndc.xy * 0.5 + 0.5;
@@ -67,6 +89,6 @@ float TransparentAlphaSumFragment(Varyings input) : SV_Target
 #endif
 
     // Discard behind fragment
-    return lerp(alpha, 0, SampleCharacterShadowmap(ssUV, ndc.z, (uint)_CharShadowmapIndex));
+    return lerp(alpha, 0, SampleCharacterShadowmap(ssUV, ndc.z, index));
 }
 #endif
