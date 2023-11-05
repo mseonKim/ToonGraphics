@@ -14,7 +14,6 @@ CBUFFER_START(CharShadow)
     float _CharShadowmapIndex;
     float _CharShadowLocalLightIndices[3];
     float4 _CharShadowCascadeParams;        // x: cascadeMaxDistance, y: cascadeResolutionScale
-    // float _LocalLightToCharShadowIdxTable[3];
 CBUFFER_END
 
 TEXTURE2D_ARRAY(_CharShadowMap);

@@ -81,6 +81,7 @@ float TransparentAlphaSumFragment(AlphaSumVaryings input) : SV_Target
 
     uint index = (uint)_CharShadowmapIndex;
     float4 clipPos = CharShadowWorldToHClip(input.positionWS, index);
+    clipPos.xy *= _CharShadowCascadeParams.y;
     clipPos.z = 1.0;
     float3 ndc = clipPos.xyz / clipPos.w;
     float2 ssUV = ndc.xy * 0.5 + 0.5;
