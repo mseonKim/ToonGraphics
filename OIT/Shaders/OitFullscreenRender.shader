@@ -17,7 +17,7 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			#pragma vertex OITVert
 			#pragma fragment OITFrag
 			#pragma target 5.0
-			// #pragma require randomwrite
+			#pragma require randomwrite
 			// #pragma enable_d3d11_debug_symbols
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"

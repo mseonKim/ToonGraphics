@@ -77,7 +77,7 @@ namespace ToonGraphics
             m_OITDepthRT?.Release();
         }
 
-        public void Setup(string featureName, in RenderingData renderingData)
+        public void Setup(string featureName)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
         }

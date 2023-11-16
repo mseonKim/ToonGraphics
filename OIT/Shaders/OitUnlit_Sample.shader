@@ -23,12 +23,13 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			#pragma require randomwrite
 			// #pragma enable_d3d11_debug_symbols
 
-			#include "UnityCG.cginc"
+			//#include "UnityCG.cginc"
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
     		#include "./LinkedListCreation.hlsl"
 
 			sampler2D _MainTex;
             float4 _MainTex_ST;
-			fixed4 _BaseColor;
+			float4 _BaseColor;
 
 			struct appdata {
 				float4 vertex : POSITION;
@@ -43,7 +44,7 @@ Shader "OrderIndependentTransparency/Unlit_Sample"
 			v2f vert(appdata v)
 			{
 				v2f o;
-				o.vertex = UnityObjectToClipPos(v.vertex);
+				o.vertex = TransformObjectToHClip(v.vertex.xyz);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				return o;
 			}

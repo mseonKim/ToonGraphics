@@ -21,5 +21,6 @@ Transparent shadow is supported as well. However, it uses more memory so enable 
 ## 2. Order Independent Transparency
 [Reference] https://github.com/happy-turtle/oit-unity
 
+![OIT](./Documentation~/Images/OIT.png)
 OIT in this package uses a linked-list method, currently support upto 8 layers for each pixel.
 

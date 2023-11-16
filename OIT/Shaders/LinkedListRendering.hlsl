@@ -18,7 +18,7 @@ float4 renderLinkedList(float4 col, float2 pos, uint uSampleIndex)
 {
     // Fetch offset of first fragment for current pixel
     // uint uStartOffsetAddress = 4 * (_ScaledScreenParams.x * (pos.y - 0.5) + (pos.x - 0.5));
-    uint uStartOffsetAddress = 4 * (_ScreenParams.x * (pos.y - 0.5) + (pos.x - 0.5));
+    uint uStartOffsetAddress = 4 * (_ScreenSize.x * (pos.y - 0.5) + (pos.x - 0.5));
     uint uOffset = StartOffsetBuffer.Load(uStartOffsetAddress);
 
     FragmentAndLinkBuffer_STRUCT SortedPixels[MAX_SORTED_PIXELS];

@@ -29,9 +29,9 @@ namespace ToonGraphics
         {
             //Calling ConfigureInput with the ScriptableRenderPassInput.Color argument ensures that the opaque texture is available to the Render Pass
             m_OitPass.ConfigureInput(ScriptableRenderPassInput.Color);
-            m_OitPass.Setup(renderingData);
+            m_OitPass.Setup("Order Independent Transparency");
             renderer.EnqueuePass(m_OitPass);
-            m_TDepthPass.Setup("OITDepthRendererFeature", renderingData);
+            m_TDepthPass.Setup("OITDepthRendererFeature");
             renderer.EnqueuePass(m_TDepthPass);
         }
 

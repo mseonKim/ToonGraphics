@@ -13,10 +13,11 @@ namespace ToonGraphics
         private RTHandle m_CopiedColor;
         private static readonly int s_BlitTextureShaderID = Shader.PropertyToID("_BlitTexture");
         private static ShaderTagId s_OutlineShaderTagId = new ShaderTagId("TransparentOutline");
+        private ProfilingSampler m_ProfilingSampler;
 
         public OitPass(Material material, ComputeShader oitComputeUtilsCS)
         {
-            renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+            renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
             orderIndependentTransparency = new OitLinkedList(oitComputeUtilsCS);
             this.material = material;
         }
@@ -27,13 +28,14 @@ namespace ToonGraphics
             {
                 orderIndependentTransparency.PreRender(cmd);
             }
-        }
-
-        public void Setup(in RenderingData renderingData)
-        {
             var colorCopyDescriptor = renderingData.cameraData.cameraTargetDescriptor;
             colorCopyDescriptor.depthBufferBits = (int) DepthBits.None;
             RenderingUtils.ReAllocateIfNeeded(ref m_CopiedColor, colorCopyDescriptor, name: "_OITPassColorCopy");
+        }
+
+        public void Setup(string featureName)
+        {
+            m_ProfilingSampler = new ProfilingSampler(featureName);
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -43,7 +45,7 @@ namespace ToonGraphics
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            using (new ProfilingScope(cmd, new ProfilingSampler("Order Independent Transparency")))
+            using (new ProfilingScope(cmd, m_ProfilingSampler))
             {
                 var src = renderingData.cameraData.renderer.cameraColorTargetHandle;
                 if (material != null && src.rt != null)
