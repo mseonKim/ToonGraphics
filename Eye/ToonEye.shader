@@ -13,6 +13,12 @@ Shader "ToonEye"
         _MaxAdditionalLightIntensity("MaxAdditionalLightIntensity", Range(0, 10)) = 1
         [Toggle(_)] _Refraction("Refraction", Float) = 1
         _RefractionWeight("RefractionWeight", Range(0, 0.1)) = 0.016
+
+        // Material Transform
+        _TransformerMaskPivot("TransformerMaskPivot", Vector) = (0, 1, 0, 0)
+        _MeshTransformScale("MeshTransformScale", Vector) = (1, 1, 1, 0)
+        _TransformerMaskChannel("TransformerMaskChannel", Float) = 0
+        _UseTransformerMask("UseTransformerMask", Float) = 0
     }
     SubShader
     {
@@ -39,6 +45,7 @@ Shader "ToonEye"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ LIGHTMAP_ON DYNAMICLIGHTMAP_ON
             #pragma multi_compile_fragment _ _LIGHT_COOKIES
+            #pragma multi_compile_fragment _MATERIAL_TRANSFORM
 
             #pragma target 3.0
 
@@ -59,9 +66,17 @@ Shader "ToonEye"
             float _Roughness;
             float _Metallic;
             float _MaxAdditionalLightIntensity;
+
+            float4 _TransformerMaskPivot;
+            float4 _MeshTransformScale; // w unused
+            float4 _MeshTransformOffset; // w unused
+            uint _TransformerMaskChannel;
+            uint _UseTransformerMask;
             CBUFFER_END
             TEXTURE2D(_BaseMap); SAMPLER(sampler_linear_mirror);
             TEXTURE2D(_HiLightTex);
+
+            #include "Packages/com.unity.toongraphics/MaterialTransform/Shaders/MaterialTransformInput.hlsl"
 
             struct Attributes
             {
@@ -80,8 +95,9 @@ Shader "ToonEye"
                 float3 positionWS           : TEXCOORD1;
                 float3 normalWS             : TEXCOORD2;    // Only used for bakedGI
                 DECLARE_LIGHTMAP_OR_SH(staticLightmapUV, vertexSH, 3);
+                float3 positionOS           : TEXCOORD4;
             #ifdef DYNAMICLIGHTMAP_ON
-                float2  dynamicLightmapUV   : TEXCOORD4; // Dynamic lightmap UVs
+                float2  dynamicLightmapUV   : TEXCOORD5; // Dynamic lightmap UVs
             #endif
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 // UNITY_VERTEX_OUTPUT_STEREO
@@ -95,6 +111,7 @@ Shader "ToonEye"
                 // UNITY_TRANSFER_INSTANCE_ID(input, output);
                 // UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
+                output.positionOS = input.positionOS.xyz;
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.positionWS = TransformObjectToWorld(input.positionOS.xyz);
                 output.uv = input.uv;
@@ -111,6 +128,12 @@ Shader "ToonEye"
             half4 frag(Varyings input) : SV_TARGET
             {
                 UNITY_SETUP_INSTANCE_ID(input);
+
+#if _MATERIAL_TRANSFORM
+                float lerpVal = 0;
+                MATERIAL_TRANSFORMER_CHECK(input.positionOS)
+                MaterialTransformerFragDiscard(mask, transformVal);
+#endif
                 // UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 // Apply Refraction
@@ -207,7 +230,12 @@ Shader "ToonEye"
 
                 color.rgb += giColor;
 
+#if _MATERIAL_TRANSFORM
+                float4 dissolveColor = MaterialTransformDissolve(mask, transformVal, lerpVal, input.uv, sampler_linear_mirror);
+                return max(color, float4(dissolveColor.rgb, 0));
+#else
                 return color;
+#endif
             }
 
             ENDHLSL

@@ -3,6 +3,9 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "DeclareCharacterShadowTexture.hlsl"
+#if _MATERIAL_TRANSFORM
+    #include "Packages/com.unity.toongraphics/MaterialTransform/Shaders/MaterialTransformInput.hlsl"
+#endif
 
 // Below material properties must be declared in seperate shader input to make compatible with SRP Batcher.
 // CBUFFER_START(UnityPerMaterial)
@@ -13,6 +16,13 @@
 // TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
 // TEXTURE2D(_ClippingMask);
 
+// These are optional (no need unless _MATERIAL_TRANSFORM enabled) 
+// CBUFFER_START(MaterialTransformer)
+//    float4 _TransformerMaskPivot;
+//    float4 _MeshTransformScale; // w unused
+//    uint _TransformerMaskChannel;
+// CBUFFER_END
+
 struct Attributes
 {
     float4 position : POSITION;
@@ -22,7 +32,8 @@ struct Attributes
 struct ShadowVaryings
 {
     float4 positionCS : SV_POSITION;
-    float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD0;
+    float3 positionOS : TEXCOORD1;
 };
 
 struct AlphaSumVaryings
@@ -30,6 +41,7 @@ struct AlphaSumVaryings
     float4 positionCS : SV_POSITION;
     float2 uv : TEXCOORD;
     float3 positionWS : TEXCOORD1;
+    float3 positionOS : TEXCOORD2;
 };
 
 ShadowVaryings TransparentShadowVert(Attributes input)
@@ -43,6 +55,9 @@ ShadowVaryings TransparentShadowVert(Attributes input)
     output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
 #endif
     output.positionCS.xy *= _CharShadowCascadeParams.y;
+
+    output.positionOS = input.position.xyz;
+
     return output;
 }
 
@@ -58,11 +73,17 @@ AlphaSumVaryings TransparentAlphaSumVert(Attributes input)
 #endif
     output.positionCS.xy *= _CharShadowCascadeParams.y;
     output.positionWS = TransformObjectToWorld(input.position.xyz);
+
+    output.positionOS = input.position.xyz;
+
     return output;
 }
 
 float TransparentShadowFragment(ShadowVaryings input) : SV_Target
 {
+#if _MATERIAL_TRANSFORM
+    MaterialTransformerFragDiscard(input.positionOS);
+#endif
     // Use A Channel for alpha sum
     float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
     alpha *= SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(input.uv, _ClippingMask)).r;
@@ -74,6 +95,9 @@ float TransparentShadowFragment(ShadowVaryings input) : SV_Target
 
 float TransparentAlphaSumFragment(AlphaSumVaryings input) : SV_Target
 {
+#if _MATERIAL_TRANSFORM
+    MaterialTransformerFragDiscard(input.positionOS);
+#endif
     // Use A Channel for alpha sum
     float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, TRANSFORM_TEX(input.uv, _MainTex)).a * _BaseColor.a;
     alpha *= SAMPLE_TEXTURE2D(_ClippingMask, sampler_MainTex, TRANSFORM_TEX(input.uv, _ClippingMask)).r;

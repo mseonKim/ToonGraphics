@@ -3,12 +3,22 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "CharacterShadowTransforms.hlsl"
+#if _MATERIAL_TRANSFORM
+    #include "Packages/com.unity.toongraphics/MaterialTransform/Shaders/MaterialTransformInput.hlsl"
+#endif
 
 // Below material properties must be declared in seperate shader input to make compatible with SRP Batcher.
 // CBUFFER_START(UnityPerMaterial)
 //     float4 _ClippingMask_ST;
 // CBUFFER_END
 // TEXTURE2D(_ClippingMask);
+
+// These are optional (no need unless _MATERIAL_TRANSFORM enabled)
+// CBUFFER_START(MaterialTransformer)
+//    float4 _TransformerMaskPivot;
+//    float4 _MeshTransformScale; // w unused
+//    uint _TransformerMaskChannel;
+// CBUFFER_END
 SAMPLER(sampler_ClippingMask);
 
 struct Attributes
@@ -22,6 +32,7 @@ struct Attributes
 struct Varyings
 {
     float2 uv           : TEXCOORD0;
+    float3 positionOS   : TEXCOORD1;
     float4 positionCS   : SV_POSITION;
     // float3 positionWS   : TEXCOORD1;
     // UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -44,12 +55,18 @@ Varyings CharShadowVertex(Attributes input)
 #endif
     output.positionCS.xy *= _CharShadowCascadeParams.y;
     // output.positionWS = TransformObjectToWorld(input.position.xyz);
+
+    output.positionOS = input.position.xyz;
+
     return output;
 }
 
 float CharShadowFragment(Varyings input) : SV_TARGET
 {
     // UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+#if _MATERIAL_TRANSFORM
+    MaterialTransformerFragDiscard(input.positionOS.xyz);
+#endif
 
     float alphaClipVar = SAMPLE_TEXTURE2D(_ClippingMask, sampler_ClippingMask, input.uv).r;
     clip(alphaClipVar- 0.001);
