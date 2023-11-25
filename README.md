@@ -29,4 +29,4 @@ OIT in this package uses a linked-list method, currently support upto 8 layers f
 Material Transformer helps you to implement cloth change effect or mesh transition for a single character. You can control linked materials with each channel seperately, or together.
 
 ![MaterialTransformer](./Documentation~/Images/MaterialTransformer.gif)
-![MaterialTransformerInspector](./Documentation~/Images/MaterialTransformerInspector.png)
+![MaterialTransformerInspector](./Documentation~/Images/MaterialTransformer_Inspector.png)
