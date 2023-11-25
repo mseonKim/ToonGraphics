@@ -5,8 +5,9 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 	}
 	SubShader
 	{
-        Tags { "RenderPipeline" = "UniversalRenderPipeline" }
-		Pass {
+        Tags { "RenderPipeline" = "UniversalPipeline" }
+		Pass
+		{
 			ZTest Always
 			ZWrite Off
 			Cull Off
@@ -17,7 +18,7 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			#pragma vertex OITVert
 			#pragma fragment OITFrag
 			#pragma target 5.0
-			#pragma require randomwrite
+			// #pragma require randomwrite
 			// #pragma enable_d3d11_debug_symbols
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -44,11 +45,11 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			}
 
 			//Pixel function returns a solid color for each point.
-			half4 OITFrag(Varyings i, uint uSampleIndex : SV_SampleIndex) : SV_Target
+			float4 OITFrag(Varyings i, uint uSampleIndex : SV_SampleIndex) : SV_Target
 			{
 				// Retrieve current color from background texture
 				float4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, i.texcoord);
-				half4 finalColor = renderLinkedList(color, i.positionCS.xy, uSampleIndex);
+				float4 finalColor = renderLinkedList(color, i.positionCS.xy, uSampleIndex);
 				return finalColor;
 			}
 			ENDHLSL

@@ -1,5 +1,5 @@
-#ifndef OIT_LINKED_LIST_INCLUDED
-#define OIT_LINKED_LIST_INCLUDED
+#ifndef OIT_LINKED_LIST_RENDERING_INCLUDED
+#define OIT_LINKED_LIST_RENDERING_INCLUDED
 
 // #include "UnityShaderVariables.cginc"
 #include "./OitUtils.hlsl"
@@ -68,4 +68,4 @@ float4 renderLinkedList(float4 col, float2 pos, uint uSampleIndex)
 
     return col;
 }
-#endif // OIT_LINKED_LIST_INCLUDED
+#endif // OIT_LINKED_LIST_RENDERING_INCLUDED
