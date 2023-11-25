@@ -49,13 +49,19 @@ namespace ToonGraphics.MaterialTransformer
             public readonly static int _gInvTransformerDissolveWidth = Shader.PropertyToID("_InvTransformerDissolveWidth");
         }
 
+        [Header("Settings")]
         public bool enable = true;
         public Vector3 meshTransformScale = Vector3.one;
         public Vector3 meshTransformOffset = Vector3.zero;
+        public GameObject targetA;
+        public GameObject targetB;
+        public bool targetAEnabled = true;
+        public bool targetBEnabled = true;
         [ColorUsage(true, true)] public Color meshTransformColor = Color.white;
         public Texture2D noiseTex;
-        [Range(0, 0.05f)] public float dissolveWidth = 0.01f; 
-        
+        [Range(0, 0.05f)] public float dissolveWidth = 0.02f;
+
+        [Header("Channels")]
         [Range(0, 1)] public float channel0;
         [Range(0, 1)] public float channel1;
         [Range(0, 1)] public float channel2;
@@ -66,6 +72,7 @@ namespace ToonGraphics.MaterialTransformer
         [Range(0, 1)] public float channel7;
         private float[] _channels = new float[8];
         
+        [Header("Material List")]
         [SerializeField]
         public List<MaterialTransformData> materialTransformLists = new List<MaterialTransformData>();
 
@@ -76,6 +83,10 @@ namespace ToonGraphics.MaterialTransformer
 
         void Update()
         {
+            if (targetA != null)
+                targetA.SetActive(targetAEnabled);
+            if (targetB != null)
+                targetB.SetActive(targetBEnabled);
             UpdateMaterialTransformer();
         }
 
