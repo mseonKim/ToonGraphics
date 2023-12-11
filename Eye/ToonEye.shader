@@ -3,22 +3,29 @@ Shader "ToonEye"
     Properties
     {
         [MainColor] _BaseColor("Color", Color) = (1,1,1,1)
-        [MainTexture] _BaseMap("Texture", 2D) = "white" {}
-        _Exposure("Exposure", Range(0, 10)) = 1
-        _HiLightTex("Texture", 2D) = "white" {}
+        [MainTexture] _BaseMap("Base Map", 2D) = "white" {}
+        _Exposure("Exposure", Range(1, 10)) = 1
+        _MinIntensity("Minium Intensity", Range(0, 1)) = 0.1
+        _HiLightTex("HighLight Tex", 2D) = "white" {}
+        [Toggle(_)] _HiLightJitter("HighLight Jittering", Float) = 0
+        _HiLightPowerR("HighLight Power for R Channel", Range(1, 64)) = 1
+        _HiLightPowerG("HighLight Power for G Channel", Range(1, 64)) = 1
+        _HiLightPowerB("HighLight Power for B Channel", Range(1, 64)) = 1
+        _HiLightIntensityR("HighLight Intensity for R Channel", Range(0, 1)) = 1
+        _HiLightIntensityG("HighLight Intensity for G Channel", Range(0, 1)) = 1
+        _HiLightIntensityB("HighLight Intensity for B Channel", Range(0, 1)) = 1
         _ShadeStep("ShadeStep", Range(0, 1)) = 0.5
-        _ShadeStepOffset("ShadeStepOffset", Range(0, 1)) = 0.01
+        _ShadeStepOffset("ShadeStep Offset", Range(0, 1)) = 0.01
         _Roughness("Roughness", Range(0, 1)) = 1 // Change only if need to calculate reflection.
         _Metallic("Metallic", Range(0, 1)) = 1 // Change only if need to calculate reflection.
-        _MaxAdditionalLightIntensity("MaxAdditionalLightIntensity", Range(0, 10)) = 1
         [Toggle(_)] _Refraction("Refraction", Float) = 1
-        _RefractionWeight("RefractionWeight", Range(0, 0.1)) = 0.016
+        _RefractionWeight("Refraction Weight", Range(0, 0.1)) = 0.016
 
         // Material Transform
-        _TransformerMaskPivot("TransformerMaskPivot", Vector) = (0, 1, 0, 0)
-        _MeshTransformScale("MeshTransformScale", Vector) = (1, 1, 1, 0)
-        _TransformerMaskChannel("TransformerMaskChannel", Float) = 0
-        _UseTransformerMask("UseTransformerMask", Float) = 0
+        [HideInInspector] _TransformerMaskPivot("TransformerMaskPivot", Vector) = (0, 1, 0, 0)
+        [HideInInspector] _MeshTransformScale("MeshTransformScale", Vector) = (1, 1, 1, 0)
+        [HideInInspector] _TransformerMaskChannel("TransformerMaskChannel", Float) = 0
+        [HideInInspector] _UseTransformerMask("UseTransformerMask", Float) = 0
     }
     SubShader
     {
@@ -59,13 +66,20 @@ Shader "ToonEye"
             float4 _EyeForward;
             float4 _EyeUp;
             float _Exposure;
+            float _MinIntensity;
+            float _HiLightJitter;
+            float _HiLightPowerR;
+            float _HiLightPowerG;
+            float _HiLightPowerB;
+            float _HiLightIntensityR;
+            float _HiLightIntensityG;
+            float _HiLightIntensityB;
             float _RefractionWeight;
             float _Refraction;
             float _ShadeStep;
             float _ShadeStepOffset;
             float _Roughness;
             float _Metallic;
-            float _MaxAdditionalLightIntensity;
 
             float4 _TransformerMaskPivot;
             float4 _MeshTransformScale; // w unused
@@ -151,8 +165,6 @@ Shader "ToonEye"
                 half4 color = _BaseColor;
                 half4 _BaseMap_var = SAMPLE_TEXTURE2D(_BaseMap, sampler_linear_mirror, TRANSFORM_TEX(uv, _BaseMap));
                 color *= _BaseMap_var;
-                // Base Exposure
-                color.rgb *= _Exposure;
 
                 half alpha = 0;
                 BRDFData brdfData;
@@ -160,12 +172,16 @@ Shader "ToonEye"
                 uint meshRenderingLayers = GetMeshRenderingLayer();
                 float3 normalWS = F;
 
-                // TODO: High light
-                half4 _HiLightTex_var = SAMPLE_TEXTURE2D(_HiLightTex, sampler_linear_mirror, TRANSFORM_TEX(uv, _HiLightTex));
-
                 // Main Light
                 Light mainLight = GetMainLight();
-                color.rgb *= mainLight.color;   // Don't apply lambert to guarantee whole eye shape.
+                half3 mainLightColor = mainLight.color.rgb * _Exposure;
+                float mainLightIntensity = 0.299 * mainLightColor.r + 0.587 * mainLightColor.g + 0.114 * mainLightColor.b;
+                color.rgb = lerp(color.rgb * mainLightColor, color.rgb * _MinIntensity, mainLightIntensity < _MinIntensity);   // Don't apply lambert to guarantee whole eye shape.
+                if (mainLightIntensity == 0)
+                {
+                    color.rgb = 0;
+                }
+                float hiLightMultiplier = mainLightIntensity >= 0.05 ? 1 : 0; // if mainLightIntensity < 0.05, assumes that only additional lights contribute to eye lighting.
 
                 // GI
                 float2 normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
@@ -198,10 +214,13 @@ Shader "ToonEye"
                 #endif
                     {
                         half3 halfLambert = dot(light.direction, normalWS) * 0.5 + 0.5;
-                        float lightIntensity = 0.299 * light.color.r + 0.587 * light.color.g + 0.114 * light.color.b;
-                        light.color *= lerp(rcp(lightIntensity) * _MaxAdditionalLightIntensity, 1, lightIntensity < _MaxAdditionalLightIntensity);
-                        half3 c = light.color * light.distanceAttenuation;
-                        additionalLightsColor += _BaseMap_var * lerp(0, c, saturate((halfLambert - m) / (M - m))) * _Exposure;
+                        float linearStep = saturate((halfLambert - m) / (M - m));
+                        half3 lightColor = light.color.rgb * _Exposure;
+                        half3 c = lightColor * light.distanceAttenuation;
+                        float lightIntensity = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+                        if (lightIntensity >= 0.05 && linearStep > 0)
+                            hiLightMultiplier = 1;
+                        additionalLightsColor += _BaseMap_var * lerp(0, c, linearStep);
                     }
                 }
             #endif
@@ -218,10 +237,13 @@ Shader "ToonEye"
                 #endif
                     {
                         half3 halfLambert = dot(light.direction, normalWS) * 0.5 + 0.5;
-                        float lightIntensity = 0.299 * light.color.r + 0.587 * light.color.g + 0.114 * light.color.b;
-                        light.color *= lerp(rcp(lightIntensity) * _MaxAdditionalLightIntensity, 1, lightIntensity < _MaxAdditionalLightIntensity);
-                        half3 c = light.color * light.distanceAttenuation;
-                        additionalLightsColor += _BaseMap_var * lerp(0, c, saturate((halfLambert - m) / (M - m))) * _Exposure;
+                        float linearStep = saturate((halfLambert - m) / (M - m));
+                        half3 lightColor = light.color.rgb * _Exposure;
+                        half3 c = lightColor * light.distanceAttenuation;
+                        float lightIntensity = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+                        if (lightIntensity >= 0.05 && linearStep > 0)
+                            hiLightMultiplier = 1;
+                        additionalLightsColor += _BaseMap_var * lerp(0, c, linearStep);
                     }
                 LIGHT_LOOP_END
 
@@ -229,6 +251,17 @@ Shader "ToonEye"
             #endif
 
                 color.rgb += giColor;
+
+                // High light
+                half4 hiLightTexVar = SAMPLE_TEXTURE2D(_HiLightTex, sampler_linear_mirror, TRANSFORM_TEX(uv, _HiLightTex));
+                float3 hiLightPower = float3(_HiLightPowerR, _HiLightPowerG, _HiLightPowerB);
+                if (_HiLightJitter > 0)
+                {
+                    hiLightPower = lerp(1, hiLightPower, cos(_Time.y * 40) > 0);
+                }
+                color.rgb += (abs(pow(hiLightTexVar.r, hiLightPower.r)) * _HiLightIntensityR * hiLightMultiplier).rrr;
+                color.rgb += (abs(pow(hiLightTexVar.g, hiLightPower.g)) * _HiLightIntensityG * hiLightMultiplier).rrr;
+                color.rgb += (abs(pow(hiLightTexVar.b, hiLightPower.b)) * _HiLightIntensityB * hiLightMultiplier).rrr;
 
 #if _MATERIAL_TRANSFORM
                 float4 dissolveColor = MaterialTransformDissolve(mask, transformVal, lerpVal, input.uv, sampler_linear_mirror);
