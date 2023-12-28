@@ -24,6 +24,7 @@ Shader "ToonEye"
         // Material Transform
         [HideInInspector] _TransformerMaskPivot("TransformerMaskPivot", Vector) = (0, 1, 0, 0)
         [HideInInspector] _MeshTransformScale("MeshTransformScale", Vector) = (1, 1, 1, 0)
+        [HideInInspector] _MeshTransformOffset("_MeshTransformOffset", Vector) = (0, 0, 0, 0)
         [HideInInspector] _TransformerMaskChannel("TransformerMaskChannel", Float) = 0
         [HideInInspector] _UseTransformerMask("UseTransformerMask", Float) = 0
     }
