@@ -99,14 +99,13 @@ namespace ToonGraphics
             m_TransparentAlphaSumRT?.Release();
         }
 
-        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config)
+        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config, bool additionalShadowEnabled)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
-            var descriptor = renderingData.cameraData.cameraTargetDescriptor;
             var scale = (int)config.transparentTextureScale;
-            s_TextureSize[0] = descriptor.width * scale;
-            s_TextureSize[1] = descriptor.height * scale;
-            m_PassData.enableAdditionalShadow = config.enableAdditionalShadow;
+            s_TextureSize[0] = 1024 * scale;
+            s_TextureSize[1] = 1024 * scale;
+            m_PassData.enableAdditionalShadow = additionalShadowEnabled;
             m_PassData.precision = (int)config.precision;
         }
 

@@ -64,7 +64,7 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
-#ifdef _HighCharSoftShadow
+#ifdef _HIGH_CHAR_SOFTSHADOW
     real fetchesWeights[9];
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharShadowmapSize, uv, fetchesWeights, fetchesUV);
@@ -91,7 +91,7 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
 
     // float offset = lerp(_CharShadowStepOffset.x, _CharShadowStepOffset.y, shadowmapIdx > 0);
     // return LinearStep_(offset - 0.1, offset, attenuation);
-    return smoothstep(0, 1, attenuation);
+    return attenuation;
 }
 
 
@@ -106,7 +106,7 @@ half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s, uint
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
-#ifdef _HighCharSoftShadow
+#if _HIGH_CHAR_SOFTSHADOW
     real fetchesWeights[9];
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharTransparentShadowmapSize, uv, fetchesWeights, fetchesUV);

@@ -40,7 +40,7 @@ namespace ToonGraphics
                 return 0.125f;
             }
             var charWorldPos = CharShadowCamera.Instance.target.position;
-            var diff = Vector3.Distance(cameraWorldPos,charWorldPos);
+            var diff = Vector3.Distance(cameraWorldPos, charWorldPos);
             if (diff < cascadeSplit.x)
                 return 1f;
             else if (diff < cascadeSplit.y)

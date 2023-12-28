@@ -14,14 +14,13 @@ namespace ToonGraphics
         private static CharShadowCamera s_Instance;
 
         public Transform target;    // Character Transform
+        public CharacterShadowConfig config;
         public float charBoundOffset = 1;
-        public float charHalfHeight = 0.75f; // Character half height
+        public float targetOffsetY = 0f;
         public float cameraDistance = 4f;
         public Camera[] lightCameras = new Camera[4];
 
         private Light _mainLight;
-        private Light[] _spotLights = new Light[3];
-        private UnityEngine.Quaternion _originQuaternion;
         private List<Light> _sceneLights;
 
         private void OnValidate()
@@ -83,14 +82,22 @@ namespace ToonGraphics
 
             lightCamera.transform.rotation = light.transform.rotation;
             var dir = light.transform.rotation * Vector3.forward;
-            lightCamera.transform.position = target.position + (Vector3.up * charHalfHeight) + (-dir * cameraDistance);
+            var distance = cameraDistance;
+            lightCamera.transform.position = target.position + (Vector3.up * targetOffsetY) + (-dir * distance);
         }
 
         public void SetLightCameraTransform(int camIndex, Light light)
         {
-            lightCameras[camIndex].transform.rotation = light.transform.rotation;
+            var camTransform = lightCameras[camIndex].transform;
+
+            var newRotation = light.transform.rotation.eulerAngles;
+            newRotation.z = 0f;
+            camTransform.rotation = Quaternion.Euler(newRotation);
             var dir = light.transform.rotation * Vector3.forward;
-            lightCameras[camIndex].transform.position = target.position + (Vector3.up * charHalfHeight) + (-dir * cameraDistance);
+
+            var distance = cameraDistance;
+            var dest = target.position;
+            camTransform.position = dest + (Vector3.up * targetOffsetY) + (-dir * distance);
         }
     }
 }

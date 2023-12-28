@@ -31,17 +31,16 @@ namespace ToonGraphics
             if (!CharacterShadowUtils.IfCharShadowUpdateNeeded(renderingData))
                 return;
 
-            // To draw only once for each frame
-            if (renderingData.cameraData.camera != Camera.main)
+            if (renderingData.cameraData.cameraType == CameraType.Reflection)
                 return;
 
             // Additional shadow is only available in forward+
             var additionalShadowEnabled = urpData != null ? config.enableAdditionalShadow && urpData.renderingMode == RenderingMode.ForwardPlus : false;
-            m_CharShadowPass.Setup("CharacterShadowMapRendererFeature", renderingData, config);
+            m_CharShadowPass.Setup("CharacterShadowMap", renderingData, config, additionalShadowEnabled);
             renderer.EnqueuePass(m_CharShadowPass);
             if (config.enableTransparentShadow)
             {
-                m_CharTransparentShadowPass.Setup("TransparentShadowMapRendererFeature", renderingData, config);
+                m_CharTransparentShadowPass.Setup("TransparentShadowMap", renderingData, config, additionalShadowEnabled);
                 renderer.EnqueuePass(m_CharTransparentShadowPass);
             }
         }
