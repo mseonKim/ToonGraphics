@@ -13,7 +13,9 @@ namespace ToonGraphics
         public static CharShadowCamera Instance => s_Instance;
         private static CharShadowCamera s_Instance;
 
-        public Transform target;    // Character Transform
+        [SerializeField, Tooltip("The camera will follow the first active target transform.")]
+        private Transform[] _targets;    // Character Transform.
+        [HideInInspector] public Transform activeTarget;
         public CharacterShadowConfig config;
         public float charBoundOffset = 1;
         public float targetOffsetY = 0f;
@@ -37,6 +39,19 @@ namespace ToonGraphics
         void Start()
         {
             RefreshSceneLights();
+        }
+
+        void Update()
+        {
+            // Find active target
+            foreach (var target in _targets)
+            {
+                if (target != null && target.gameObject.activeInHierarchy == true)
+                {
+                    activeTarget = target;
+                    break;
+                }
+            }
         }
 
         void LateUpdate()
@@ -83,7 +98,7 @@ namespace ToonGraphics
             lightCamera.transform.rotation = light.transform.rotation;
             var dir = light.transform.rotation * Vector3.forward;
             var distance = cameraDistance;
-            lightCamera.transform.position = target.position + (Vector3.up * targetOffsetY) + (-dir * distance);
+            lightCamera.transform.position = (activeTarget?.position ?? Vector3.zero) + (Vector3.up * targetOffsetY) + (-dir * distance);
         }
 
         public void SetLightCameraTransform(int camIndex, Light light)
@@ -96,7 +111,7 @@ namespace ToonGraphics
             var dir = light.transform.rotation * Vector3.forward;
 
             var distance = cameraDistance;
-            var dest = target.position;
+            var dest = (activeTarget?.position ?? Vector3.zero);
             camTransform.position = dest + (Vector3.up * targetOffsetY) + (-dir * distance);
         }
     }

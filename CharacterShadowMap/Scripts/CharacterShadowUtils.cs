@@ -20,11 +20,11 @@ namespace ToonGraphics
         public static bool IfCharShadowUpdateNeeded(in RenderingData renderingData)
         {
             var cameraWorldPos = renderingData.cameraData.camera.transform.position;
-            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.target == null)
+            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.activeTarget == null)
             {
                 return false;
             }
-            var charWorldPos = CharShadowCamera.Instance.target.position;
+            var charWorldPos = CharShadowCamera.Instance.activeTarget.position;
             var diff = Vector3.Distance(cameraWorldPos,charWorldPos);
             return diff < CHAR_SHADOW_CULLING_DIST;
         }
@@ -35,11 +35,11 @@ namespace ToonGraphics
         public static float FindCascadedShadowMapResolutionScale(in RenderingData renderingData, Vector4 cascadeSplit)
         {
             var cameraWorldPos = renderingData.cameraData.camera.transform.position;
-            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.target == null)
+            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.activeTarget == null)
             {
                 return 0.125f;
             }
-            var charWorldPos = CharShadowCamera.Instance.target.position;
+            var charWorldPos = CharShadowCamera.Instance.activeTarget.position;
             var diff = Vector3.Distance(cameraWorldPos, charWorldPos);
             if (diff < cascadeSplit.x)
                 return 1f;
@@ -89,7 +89,7 @@ namespace ToonGraphics
         private static List<int> CalculateMostIntensiveLightIndices(ref RenderingData renderingData)
         {
             activeSpotLightCount = 0;
-            if (CharShadowCamera.Instance == null)
+            if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.activeTarget == null)
             {
                 return null;
             }
@@ -120,7 +120,7 @@ namespace ToonGraphics
             }
 
             // Calculate light intensity
-            var target = CharShadowCamera.Instance.target.transform;
+            var target = CharShadowCamera.Instance.activeTarget;
             for (int i = 0; i < s_vSpotLights.Count; i++)
             {
                 var light = s_vSpotLights[i].light;
