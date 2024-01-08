@@ -44,15 +44,19 @@ inline void MaterialTransformerDissolveClip(float2 uv, float mask, float transfo
 
 float4 MaterialTransformDissolve(float mask, float transformVal, inout float lerpVal, float2 uv, sampler sampler_TransformerDissolveTex)
 {
-    lerpVal = 1.0 - saturate(abs(transformVal - mask) * _InvTransformerDissolveWidth);
-    float dissolve = 1;
-    float dissolveMask = saturate(abs(mask - transformVal) / (1.0 - transformVal)) * 10;
-    float dissolveVal = SAMPLE_TEXTURE2D(_TransformerDissolveTex, sampler_TransformerDissolveTex, uv).r;
-    if (lerpVal > 0)
+    if (_UseTransformerMask > 0)
     {
-        dissolve = (dissolveVal - dissolveMask);
+        lerpVal = 1.0 - saturate(abs(transformVal - mask) * _InvTransformerDissolveWidth);
+        float dissolve = 1;
+        float dissolveMask = saturate(abs(mask - transformVal) / (1.0 - transformVal)) * 10;
+        float dissolveVal = SAMPLE_TEXTURE2D(_TransformerDissolveTex, sampler_TransformerDissolveTex, uv).r;
+        if (lerpVal > 0)
+        {
+            dissolve = (dissolveVal - dissolveMask);
+        }
+        return float4(_TransformerColor.rgb * lerpVal * dissolve, dissolveMask - dissolveVal);
     }
-    return float4(_TransformerColor.rgb * lerpVal * dissolve, dissolveMask - dissolveVal);
+    return 0;
 }
 
 // Unused
