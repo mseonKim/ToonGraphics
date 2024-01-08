@@ -25,8 +25,12 @@ namespace ToonGraphics
     [CreateAssetMenu(menuName = "ToonGraphics/CharacterShadowConfig")]
     public class CharacterShadowConfig : ScriptableObject
     {
+        [Tooltip("If enabled, Transparent shadowmap will be rendered.")]
         public bool enableTransparentShadow = false;
+        [Tooltip("If enabled, use 4 Shadowmaps. (MainLight & 3 additional spot lights)")]
         public bool enableAdditionalShadow = false;
+        [Tooltip("If enabled, use the stronger light among MainLight & the brighest spot light for the character shadow map. It will ignore 3 other additional shadows even though 'enableAdditionalShadow' is enabled.")]
+        public bool useBrightestLightOnly = false;
         public float bias;
         public float normalBias;
         public float additionalBias;

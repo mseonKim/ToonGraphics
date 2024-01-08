@@ -14,11 +14,21 @@ half LinearStep_(float m, float M, float x)
 
 uint LocalLightIndexToShadowmapIndex(int lightindex)
 {
-    for (int i = 0; i < 3; i++)
+    if (_UseAdditonalCharShadow > 0)
     {
-        if (lightindex == (int)_CharShadowLocalLightIndices[i])
+        for (int i = 0; i < 3; i++)
         {
-            return (uint)(i + 1);
+            if (lightindex == (int)_CharShadowLocalLightIndices[i])
+            {
+                return (uint)(i + 1);
+            }
+        }
+    }
+    else if (_UseBrightestLightOnly > 0)
+    {
+        if (lightindex == (int)_CharShadowLocalLightIndices[0])
+        {
+            return 0;
         }
     }
     return MAX_CHAR_SHADOWMAPS;

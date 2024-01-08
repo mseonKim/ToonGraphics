@@ -50,7 +50,11 @@ namespace ToonGraphics
             return 0.125f;
         }
 
-        public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData)
+        /// <summary>
+        /// if useBrighestLightOnly == true : LightIndices => [mainLight, spot1, spot2, spot3]
+        /// if useBrighestLightOnly == false : LightIndices => [spot1, mainLight, spot2, spot3] or [mainLight, spot1, spot2, spot3]
+        /// </summary>
+        public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData, bool useBrighestLightOnly)
         {
             var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData);
             if (spotLightIndices == null || spotLightIndices.Count == 0)
@@ -64,11 +68,34 @@ namespace ToonGraphics
                 lightOffset++;
             }
             var hasMainLight = 0;
-            // Update Main Light Camera transform
+
+            float mainLightStrength = 0f;
+            int brightestLightIndex = 0;
+            int brightestSpotLightIndex = 0;
+            // Find stronger light among mainLight & brighest spot light
             if (renderingData.lightData.mainLightIndex != -1 && lightOffset != 0)
             {
-                CharShadowCamera.Instance.SetLightCameraTransform(0, visibleLights[renderingData.lightData.mainLightIndex].light);
                 hasMainLight = 1;
+                brightestSpotLightIndex = spotLightIndices[0] + hasMainLight;
+                brightestLightIndex = renderingData.lightData.mainLightIndex;
+
+                var mainLight = visibleLights[renderingData.lightData.mainLightIndex].light;
+                var mainLightColor = mainLight.color * mainLight.intensity;
+                mainLightStrength = mainLightColor.r * 0.299f + mainLightColor.g * 0.587f + mainLightColor.b * 0.114f;
+            }
+
+            // Replace with the brighest spot light
+            if (useBrighestLightOnly)
+            {
+                var brightestSpotLightColor = visibleLights[brightestSpotLightIndex].light.color * visibleLights[brightestSpotLightIndex].light.intensity;
+                var brightestSpotLightStrength = brightestSpotLightColor.r * 0.299f + brightestSpotLightColor.g * 0.587f + brightestSpotLightColor.b * 0.114f;
+                brightestLightIndex = (hasMainLight == 1 && mainLightStrength >= brightestSpotLightStrength) ? renderingData.lightData.mainLightIndex : brightestSpotLightIndex;
+            }
+
+            // Update First Light Camera transform (Main or Brighest light)
+            if (brightestLightIndex >= 0 && brightestLightIndex < visibleLights.Length)
+            {
+                CharShadowCamera.Instance.SetLightCameraTransform(0, visibleLights[brightestLightIndex].light);
             }
 
             var localLightIndices = new float[3] { -1, -1, -1 };

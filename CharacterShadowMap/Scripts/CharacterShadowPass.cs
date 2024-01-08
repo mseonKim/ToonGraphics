@@ -53,6 +53,8 @@ namespace ToonGraphics
             public static int _ShadowMapIndex = Shader.PropertyToID("_CharShadowmapIndex");
             public static int _CharShadowLightDirections = Shader.PropertyToID("_CharShadowLightDirections");
             public static int _CharShadowCascadeParams = Shader.PropertyToID("_CharShadowCascadeParams");
+            public static int _UseAdditonalCharShadow = Shader.PropertyToID("_UseAdditonalCharShadow");
+            public static int _UseBrightestLightOnly = Shader.PropertyToID("_UseBrightestLightOnly");
         }
 
 
@@ -64,6 +66,7 @@ namespace ToonGraphics
         private CharSoftShadowMode m_SoftShadowMode;
         private float m_cascadeResolutionScale = 1f;
         private float m_cascadeMaxDistance;
+        private bool m_UseBrightestLightOnly;
 
         private FilteringSettings m_FilteringSettings;
         
@@ -93,6 +96,7 @@ namespace ToonGraphics
             s_TextureSize[1] = 1024 * scale;
             m_PassData.precision = (int)config.precision;
             m_PassData.enableAdditionalShadow = additionalShadowEnabled;
+            m_PassData.useBrightestLightOnly = config.useBrightestLightOnly;
             m_SoftShadowMode = config.softShadowMode;
         }
 
@@ -108,12 +112,14 @@ namespace ToonGraphics
 
             m_PassData.charShadowRT = m_CharShadowRT;
             cmd.SetGlobalVector(IDs._CharShadowCascadeParams, new Vector4(m_cascadeMaxDistance, m_cascadeResolutionScale, 0, 0));
+            cmd.SetGlobalInt(IDs._UseAdditonalCharShadow, m_PassData.enableAdditionalShadow ? 1 : 0);
+            cmd.SetGlobalInt(IDs._UseBrightestLightOnly, m_PassData.useBrightestLightOnly ? 1 : 0);
             CoreUtils.SetKeyword(cmd, "_HIGH_CHAR_SOFTSHADOW", m_SoftShadowMode == CharSoftShadowMode.High);
         }
 
         private static void SetCharShadowConfig(CommandBuffer cmd, PassData passData, ref RenderingData renderingData)
         {
-            CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData);
+            CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData, passData.useBrightestLightOnly);
 
             var lightCameras = CharShadowCamera.Instance.lightCameras;
             if (lightCameras != null && lightCameras[0] != null)
@@ -214,6 +220,7 @@ namespace ToonGraphics
             public Vector4 stepOffset;
             public int precision;
             public bool enableAdditionalShadow;
+            public bool useBrightestLightOnly;
             public int activeSpotlightCount;
             public RTHandle charShadowRT;
         }

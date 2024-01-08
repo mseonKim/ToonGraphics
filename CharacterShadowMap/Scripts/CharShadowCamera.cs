@@ -56,7 +56,7 @@ namespace ToonGraphics
 
         void LateUpdate()
         {
-            RefreshLightCameraTransforms();
+            // RefreshLightCameraTransforms();
         }
 
         ///<summary>
