@@ -51,6 +51,7 @@ namespace ToonGraphics.MaterialTransformer
 
         [Header("Settings")]
         public bool enable = true;
+        public bool reversed = false;
         public Vector3 meshTransformScale = Vector3.one;
         public Vector3 meshTransformOffset = Vector3.zero;
         public GameObject targetA;
@@ -127,7 +128,13 @@ namespace ToonGraphics.MaterialTransformer
                 var targetMaterial = transformData.material;
                 if (targetMaterial != null)
                 {
-                    targetMaterial.SetVector(ShaderID._TransformerMaskPivot, transformData.pivotVector);
+                    var pivotVector = transformData.pivotVector;
+                    if (reversed)
+                    {
+                        // 0 -> 1, 1 -> 0, 0.5 -> 0.5
+                        pivotVector.w = Mathf.Abs(pivotVector.w - 1);
+                    }
+                    targetMaterial.SetVector(ShaderID._TransformerMaskPivot, pivotVector);
                     targetMaterial.SetVector(ShaderID._MeshTransformScale, meshTransformScale);
                     targetMaterial.SetVector(ShaderID._MeshTransformOffset, meshTransformOffset);
                     targetMaterial.SetInt(ShaderID._TransformerMaskChannel, transformData.channel);
