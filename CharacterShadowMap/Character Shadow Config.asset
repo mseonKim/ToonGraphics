@@ -19,10 +19,7 @@ MonoBehaviour:
     m_Bits: 16384
   bias: 0.001
   normalBias: 0.001
-  additionalBias: 0.001
-  additionalNormalBias: 0.0002
   stepOffset: 0.99
-  additionalStepOffset: 0.99
   textureScale: 8
   transparentTextureScale: 2
   precision: 14

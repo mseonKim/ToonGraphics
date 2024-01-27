@@ -8,6 +8,7 @@ using UnityEngine;
 namespace ToonGraphics
 {
     [ExecuteAlways]
+    [RequireComponent(typeof(Camera))]
     public class CharShadowCamera : MonoBehaviour
     {
         public static CharShadowCamera Instance => s_Instance;
@@ -20,7 +21,9 @@ namespace ToonGraphics
         public float charBoundOffset = 1;
         public float targetOffsetY = 0f;
         public float cameraDistance = 4f;
-        public Camera[] lightCameras = new Camera[4];
+
+        private Camera m_LightCamera;
+        public Camera lightCamera => m_LightCamera;
 
         private Light _mainLight;
         private List<Light> _sceneLights;
@@ -38,6 +41,7 @@ namespace ToonGraphics
         // Start is called before the first frame update
         void Start()
         {
+            m_LightCamera = GetComponent<Camera>();
             RefreshSceneLights();
         }
 
@@ -52,11 +56,6 @@ namespace ToonGraphics
                     break;
                 }
             }
-        }
-
-        void LateUpdate()
-        {
-            // RefreshLightCameraTransforms();
         }
 
         ///<summary>
@@ -84,26 +83,9 @@ namespace ToonGraphics
             }
         }
 
-        public void RefreshLightCameraTransforms()
+        public void SetLightCameraTransform(Light light)
         {
-            // Update Main Light Camera Transform
-            SetLightCameraTransform(lightCameras[0], _mainLight);
-        }
-
-        public void SetLightCameraTransform(Camera lightCamera, Light light)
-        {
-            if (lightCamera == null || light == null)
-                return;
-
-            lightCamera.transform.rotation = light.transform.rotation;
-            var dir = light.transform.rotation * Vector3.forward;
-            var distance = cameraDistance;
-            lightCamera.transform.position = (activeTarget?.position ?? Vector3.zero) + (Vector3.up * targetOffsetY) + (-dir * distance);
-        }
-
-        public void SetLightCameraTransform(int camIndex, Light light)
-        {
-            var camTransform = lightCameras[camIndex].transform;
+            var camTransform = lightCamera.transform;
 
             var newRotation = light.transform.rotation.eulerAngles;
             newRotation.z = 0f;

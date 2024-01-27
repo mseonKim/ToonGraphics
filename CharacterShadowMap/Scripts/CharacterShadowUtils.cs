@@ -58,7 +58,7 @@ namespace ToonGraphics
         {
             var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData, followLightLayer);
             var visibleLights = renderingData.lightData.visibleLights;
-            if (spotLightIndices[0] < 0 && spotLightIndices[1] < 0)
+            if (spotLightIndices == null || (spotLightIndices[0] < 0 && spotLightIndices[1] < 0))
             {
                 if (renderingData.lightData.mainLightIndex != -1)
                 {
@@ -111,10 +111,10 @@ namespace ToonGraphics
                 brightestLightIndex = (hasMainLight == 1 && mainLightStrength >= brightestSpotLightStrength) ? renderingData.lightData.mainLightIndex : brightestSpotLightIndex;
             }
 
-            // Update First Light Camera transform (Main or Brighest light)
+            // Update Light Camera transform (Main or Brighest light)
             if (brightestLightIndex >= 0 && brightestLightIndex < visibleLights.Length)
             {
-                CharShadowCamera.Instance.SetLightCameraTransform(0, visibleLights[brightestLightIndex].light);
+                CharShadowCamera.Instance.SetLightCameraTransform(visibleLights[brightestLightIndex].light);
                 brightestLightDirection = -visibleLights[brightestLightIndex].light.transform.forward;
             }
 

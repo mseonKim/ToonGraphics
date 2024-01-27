@@ -110,12 +110,12 @@ namespace ToonGraphics
         {
             CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData, passData.useBrightestLight, passData.followLightLayer);
 
-            var lightCameras = CharShadowCamera.Instance.lightCameras;
-            if (lightCameras != null && lightCameras[0] != null)
+            var lightCamera = CharShadowCamera.Instance.lightCamera;
+            if (lightCamera != null)
             {
                 float widthScale = (float)Screen.width / (float)Screen.height;
-                passData.projectM = lightCameras[0].projectionMatrix;
-                passData.viewM = lightCameras[0].worldToCameraMatrix;
+                passData.projectM = lightCamera.projectionMatrix;
+                passData.viewM = lightCamera.worldToCameraMatrix;
                 passData.viewM.m00 *= widthScale;
             }
 
