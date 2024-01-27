@@ -85,6 +85,9 @@ namespace ToonGraphics
 
         public void SetLightCameraTransform(Light light)
         {
+            if (lightCamera == null)
+                return;
+                
             var camTransform = lightCamera.transform;
 
             var newRotation = light.transform.rotation.eulerAngles;
