@@ -8,8 +8,8 @@ This package contains multiple graphics features for toon shading for PC/Console
 Character Shadowmap is designed to improve character lighting quality by adding shadow for a single character. There's a room for improvement to cover more than one character, however, currently unsupported without customizing script.
 
 ### Additional ShadowMap
-It also supports additional local shadows as well, upto 3 spot lights.
-Automatically calculates the most effective lights to the character among all spot lights in the scene each frame, and then draw additional shadows.
+It also supports additional local shadow if `useBrightestLight` enabled.
+Automatically calculates the most effective lights to the character among all spot lights matching the `FollowLayerMask` in the scene each frame. If the intensity of the brightest spot light is stronger than MainLight(Directional Light), use it for `CharacterShadowMap` instead of the MainLight.
 
 ![AdditionalShadow](./Documentation~/Images/CharShadow_Additional.png)
 

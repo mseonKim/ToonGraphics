@@ -46,7 +46,7 @@ Varyings CharShadowVertex(Attributes input)
     // UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
     output.uv = TRANSFORM_TEX(input.texcoord, _ClippingMask);
-    output.positionCS = CharShadowObjectToHClip(input.position.xyz, input.normal, (uint)_CharShadowmapIndex);
+    output.positionCS = CharShadowObjectToHClip(input.position.xyz, input.normal);
 
 #if UNITY_REVERSED_Z
     output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);

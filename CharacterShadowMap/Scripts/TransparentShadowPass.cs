@@ -99,13 +99,12 @@ namespace ToonGraphics
             m_TransparentAlphaSumRT?.Release();
         }
 
-        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config, bool additionalShadowEnabled)
+        public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
             var scale = (int)config.transparentTextureScale;
             s_TextureSize[0] = 1024 * scale;
             s_TextureSize[1] = 1024 * scale;
-            m_PassData.enableAdditionalShadow = additionalShadowEnabled;
             m_PassData.precision = (int)config.precision;
         }
 
@@ -113,9 +112,8 @@ namespace ToonGraphics
         {
             // Depth
             var descriptor = new RenderTextureDescriptor(s_TextureSize[0], s_TextureSize[1], (RenderTextureFormat)m_PassData.precision, 0);
-            descriptor.dimension = TextureDimension.Tex2DArray;
+            descriptor.dimension = TextureDimension.Tex2D;
             descriptor.sRGB = false;
-            descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
 
             RenderingUtils.ReAllocateIfNeeded(ref m_TransparentShadowRT, descriptor, FilterMode.Bilinear, name:"TransparentShadowMap");
             cmd.SetGlobalTexture(s_TransparentShadowMapId, m_TransparentShadowRT);
@@ -171,35 +169,6 @@ namespace ToonGraphics
 
                 var alphaDrawSettings = RenderingUtils.CreateDrawingSettings(k_AlphaSumShaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
                 context.DrawRenderers(renderingData.cullResults, ref alphaDrawSettings, ref filteringSettings);
-
-                if (passData.enableAdditionalShadow)
-                {
-                    context.ExecuteCommandBuffer(cmd);
-                    cmd.Clear();
-
-                    // Depth
-                    for (int i = 0; i < CharacterShadowUtils.activeSpotLightCount; i++)
-                    {
-                        CoreUtils.SetRenderTarget(cmd, passData.target, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
-                        cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
-                        context.ExecuteCommandBuffer(cmd);
-                        cmd.Clear();
-                        context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
-                    }
-
-                    context.ExecuteCommandBuffer(cmd);
-                    cmd.Clear();
-
-                    // Alpha sum
-                    for (int i = 0; i < CharacterShadowUtils.activeSpotLightCount; i++)
-                    {
-                        CoreUtils.SetRenderTarget(cmd, passData.alphaSumTarget, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
-                        cmd.SetGlobalFloat(s_ShadowMapIndex, i + 1);
-                        context.ExecuteCommandBuffer(cmd);
-                        cmd.Clear();
-                        context.DrawRenderers(renderingData.cullResults, ref alphaDrawSettings, ref filteringSettings);
-                    }
-                }
             }
 
             context.ExecuteCommandBuffer(cmd);
@@ -213,7 +182,6 @@ namespace ToonGraphics
             public RTHandle target;
             public RTHandle alphaSumTarget;
             public int precision;
-            public bool enableAdditionalShadow;
         }
     }
 }

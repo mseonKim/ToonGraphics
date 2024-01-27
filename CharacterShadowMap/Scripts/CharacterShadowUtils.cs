@@ -10,12 +10,12 @@ namespace ToonGraphics
 {
     public static class CharacterShadowUtils
     {
-        public static int activeSpotLightCount = 0;
         private const float CHAR_SHADOW_CULLING_DIST = 18.0f;
         private static List<VisibleLight> s_vSpotLights = new List<VisibleLight>(256);
         private static List<int> s_vSpotLightIndices = new List<int>(256);
         private static List<KeyValuePair<float, int>> s_SortedSpotLights = new List<KeyValuePair<float, int>>(256);
-        private static int s_CharShadowLocalLightIndices = Shader.PropertyToID("_CharShadowLocalLightIndices");
+        private static int s_CharShadowLocalLightIndex = Shader.PropertyToID("_CharShadowLocalLightIndex");
+        private static int s_BrightestLightDirection = Shader.PropertyToID("_BrightestLightDirection");
 
         public static bool IfCharShadowUpdateNeeded(in RenderingData renderingData)
         {
@@ -51,16 +51,22 @@ namespace ToonGraphics
         }
 
         /// <summary>
-        /// if useBrighestLightOnly == true : LightIndices => [mainLight, spot1, spot2, spot3]
-        /// if useBrighestLightOnly == false : LightIndices => [spot1, mainLight, spot2, spot3] or [mainLight, spot1, spot2, spot3]
+        /// 1. if (useBrighestLightOnly == true) : LightIndex = spot or mainLight.
+        /// 2. if (useBrighestLightOnly == false) : LightIndex = mainLight
         /// </summary>
-        public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData, bool useBrighestLightOnly)
+        public static void SetShadowmapLightData(CommandBuffer cmd, ref RenderingData renderingData, bool useBrighestLight, LayerMask followLightLayer)
         {
-            var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData);
-            if (spotLightIndices == null || spotLightIndices.Count == 0)
-                return;
-
+            var spotLightIndices = CalculateMostIntensiveLightIndices(ref renderingData, followLightLayer);
             var visibleLights = renderingData.lightData.visibleLights;
+            if (spotLightIndices[0] < 0 && spotLightIndices[1] < 0)
+            {
+                if (renderingData.lightData.mainLightIndex != -1)
+                {
+                    cmd.SetGlobalVector(s_BrightestLightDirection, -visibleLights[renderingData.lightData.mainLightIndex].light.transform.forward);
+                }
+                return;
+            }
+
             var lightCount = renderingData.lightData.visibleLights.Length;
             var lightOffset = 0;
             while (lightOffset < lightCount && visibleLights[lightOffset].lightType == LightType.Directional)
@@ -70,8 +76,10 @@ namespace ToonGraphics
             var hasMainLight = 0;
 
             float mainLightStrength = 0f;
-            int brightestLightIndex = 0;
-            int brightestSpotLightIndex = 0;
+            int brightestLightIndex = -1;
+            int brightestSpotLightIndex = -1;
+            var brightestLightDirection = new Vector3(0, -1, 0);
+
             // Find stronger light among mainLight & brighest spot light
             if (renderingData.lightData.mainLightIndex != -1 && lightOffset != 0)
             {
@@ -83,9 +91,20 @@ namespace ToonGraphics
                 var mainLightColor = mainLight.color * mainLight.intensity;
                 mainLightStrength = mainLightColor.r * 0.299f + mainLightColor.g * 0.587f + mainLightColor.b * 0.114f;
             }
+            else
+            {
+                if (spotLightIndices[0] >= 0)
+                {
+                    brightestLightIndex = brightestSpotLightIndex = spotLightIndices[0] + hasMainLight;
+                }
+                else
+                {
+                    brightestLightIndex = brightestSpotLightIndex = spotLightIndices[1] + hasMainLight;
+                }
+            }
 
             // Replace with the brighest spot light
-            if (useBrighestLightOnly)
+            if (useBrighestLight && brightestSpotLightIndex >= 0)
             {
                 var brightestSpotLightColor = visibleLights[brightestSpotLightIndex].light.color * visibleLights[brightestSpotLightIndex].light.intensity;
                 var brightestSpotLightStrength = brightestSpotLightColor.r * 0.299f + brightestSpotLightColor.g * 0.587f + brightestSpotLightColor.b * 0.114f;
@@ -96,26 +115,19 @@ namespace ToonGraphics
             if (brightestLightIndex >= 0 && brightestLightIndex < visibleLights.Length)
             {
                 CharShadowCamera.Instance.SetLightCameraTransform(0, visibleLights[brightestLightIndex].light);
-            }
-
-            var localLightIndices = new float[3] { -1, -1, -1 };
-            lightCount = (int)Mathf.Min(spotLightIndices.Count, 3);
-            for (int i = 0; i < lightCount; i++)
-            {
-                // Update local light camera transform
-                int lightIndex = spotLightIndices[i] + hasMainLight;
-                CharShadowCamera.Instance.SetLightCameraTransform(i + 1, visibleLights[lightIndex].light);
-                // Update local light index table
-                localLightIndices[i] = spotLightIndices[i];
+                brightestLightDirection = -visibleLights[brightestLightIndex].light.transform.forward;
             }
 
             // Send to GPU
-            cmd.SetGlobalFloatArray(s_CharShadowLocalLightIndices, localLightIndices);
+            cmd.SetGlobalVector(s_BrightestLightDirection, brightestLightDirection);
+            cmd.SetGlobalInt(s_CharShadowLocalLightIndex, brightestSpotLightIndex >= 0 ? brightestSpotLightIndex - hasMainLight : -1);
         }
 
-        private static List<int> CalculateMostIntensiveLightIndices(ref RenderingData renderingData)
+        ///<returns>
+        /// [0]: FollowLight, [1]: Additional SpotLight
+        ///</returns>
+        private static List<int> CalculateMostIntensiveLightIndices(ref RenderingData renderingData, LayerMask followLayer)
         {
-            activeSpotLightCount = 0;
             if (CharShadowCamera.Instance == null || CharShadowCamera.Instance.activeTarget == null)
             {
                 return null;
@@ -173,12 +185,23 @@ namespace ToonGraphics
             // Sort
             s_SortedSpotLights.Sort((x, y) => y.Key.CompareTo(x.Key));
 
-            var charSpotLightIndices = new List<int>(s_SortedSpotLights.Count);
-            for (int i = 0; i < charSpotLightIndices.Capacity; i++)
+            var charSpotLightIndices = new List<int>(2) { -1, -1 };
+            int followLightLayer = (int)Mathf.Log(followLayer.value, 2);
+            for (int i = 0; i < s_SortedSpotLights.Count; i++)
             {
-                charSpotLightIndices.Add(s_SortedSpotLights[i].Value);
+                var curr = s_SortedSpotLights[i].Value;
+                if (visibleLights[curr].light.gameObject.layer == followLightLayer)
+                {
+                    if (charSpotLightIndices[0] < 0)
+                        charSpotLightIndices[0] = curr;
+                }
+                else
+                {
+                    if (charSpotLightIndices[1] < 0)
+                        charSpotLightIndices[1] = curr;
+                }
             }
-            activeSpotLightCount = (int)Mathf.Min(charSpotLightIndices.Count, 3);
+
             return charSpotLightIndices;
         }
     }

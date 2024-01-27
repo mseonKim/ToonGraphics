@@ -31,8 +31,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using Unity.Collections;
-using System.Collections.Generic;
 
 namespace ToonGraphics
 {
@@ -43,18 +41,14 @@ namespace ToonGraphics
         private static class IDs
         {
             public static int _CharShadowMap = Shader.PropertyToID("_CharShadowMap");
-            public static int _CharShadowBias = Shader.PropertyToID("_CharShadowBias");
+            public static int _CharShadowParams = Shader.PropertyToID("_CharShadowParams");
             public static int _ViewMatrix = Shader.PropertyToID("_CharShadowViewM");
             public static int _ProjMatrix = Shader.PropertyToID("_CharShadowProjM");
             public static int _ShadowOffset0 = Shader.PropertyToID("_CharShadowOffset0");
             public static int _ShadowOffset1 = Shader.PropertyToID("_CharShadowOffset1");
             public static int _ShadowMapSize = Shader.PropertyToID("_CharShadowmapSize");
-            public static int _ShadowStepOffset = Shader.PropertyToID("_CharShadowStepOffset");
-            public static int _ShadowMapIndex = Shader.PropertyToID("_CharShadowmapIndex");
-            public static int _CharShadowLightDirections = Shader.PropertyToID("_CharShadowLightDirections");
             public static int _CharShadowCascadeParams = Shader.PropertyToID("_CharShadowCascadeParams");
-            public static int _UseAdditonalCharShadow = Shader.PropertyToID("_UseAdditonalCharShadow");
-            public static int _UseBrightestLightOnly = Shader.PropertyToID("_UseBrightestLightOnly");
+            public static int _UseBrightestLight = Shader.PropertyToID("_UseBrightestLight");
         }
 
 
@@ -66,11 +60,8 @@ namespace ToonGraphics
         private CharSoftShadowMode m_SoftShadowMode;
         private float m_cascadeResolutionScale = 1f;
         private float m_cascadeMaxDistance;
-        private bool m_UseBrightestLightOnly;
-
         private FilteringSettings m_FilteringSettings;
         
-
 
         public CharacterShadowPass(RenderPassEvent evt, RenderQueueRange renderQueueRange)
         {
@@ -87,55 +78,45 @@ namespace ToonGraphics
         public void Setup(string featureName, in RenderingData renderingData, CharacterShadowConfig config, bool additionalShadowEnabled)
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
-            m_PassData.bias = new Vector4(config.bias, config.normalBias, config.additionalBias, config.additionalNormalBias);
-            m_PassData.stepOffset = new Vector2(config.stepOffset, config.additionalStepOffset);
+            m_PassData.bias = new Vector2(config.bias, config.normalBias);
+            m_PassData.stepOffset = config.stepOffset;
             var scale = (int)config.textureScale;
             m_cascadeResolutionScale = CharacterShadowUtils.FindCascadedShadowMapResolutionScale(renderingData, config.cascadeSplit);
             m_cascadeMaxDistance = config.cascadeSplit.w;
             s_TextureSize[0] = 1024 * scale;
             s_TextureSize[1] = 1024 * scale;
             m_PassData.precision = (int)config.precision;
-            m_PassData.enableAdditionalShadow = additionalShadowEnabled;
-            m_PassData.useBrightestLightOnly = config.useBrightestLightOnly;
+            m_PassData.useBrightestLight = additionalShadowEnabled ? config.useBrightestLight : false;
+            m_PassData.followLightLayer = config.followLayerMask;
             m_SoftShadowMode = config.softShadowMode;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var descriptor = new RenderTextureDescriptor(s_TextureSize[0], s_TextureSize[1], (RenderTextureFormat)m_PassData.precision, 0);
-            descriptor.dimension = TextureDimension.Tex2DArray;
+            descriptor.dimension = TextureDimension.Tex2D;
             descriptor.sRGB = false;
-            descriptor.volumeDepth = m_PassData.enableAdditionalShadow ? 4 : 1;
             // Allocate Char Shadowmap
             RenderingUtils.ReAllocateIfNeeded(ref m_CharShadowRT, descriptor, FilterMode.Bilinear, name:"CharShadowMap");
             cmd.SetGlobalTexture(IDs._CharShadowMap, m_CharShadowRT);
 
             m_PassData.charShadowRT = m_CharShadowRT;
             cmd.SetGlobalVector(IDs._CharShadowCascadeParams, new Vector4(m_cascadeMaxDistance, m_cascadeResolutionScale, 0, 0));
-            cmd.SetGlobalInt(IDs._UseAdditonalCharShadow, m_PassData.enableAdditionalShadow ? 1 : 0);
-            cmd.SetGlobalInt(IDs._UseBrightestLightOnly, m_PassData.useBrightestLightOnly ? 1 : 0);
+            cmd.SetGlobalInt(IDs._UseBrightestLight, m_PassData.useBrightestLight ? 1 : 0);
             CoreUtils.SetKeyword(cmd, "_HIGH_CHAR_SOFTSHADOW", m_SoftShadowMode == CharSoftShadowMode.High);
         }
 
         private static void SetCharShadowConfig(CommandBuffer cmd, PassData passData, ref RenderingData renderingData)
         {
-            CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData, passData.useBrightestLightOnly);
+            CharacterShadowUtils.SetShadowmapLightData(cmd, ref renderingData, passData.useBrightestLight, passData.followLightLayer);
 
             var lightCameras = CharShadowCamera.Instance.lightCameras;
             if (lightCameras != null && lightCameras[0] != null)
             {
-                int length = lightCameras.Length;
-                passData.viewM = new Matrix4x4[length];
                 float widthScale = (float)Screen.width / (float)Screen.height;
                 passData.projectM = lightCameras[0].projectionMatrix;
-                for (int i = 0; i < length; i++)
-                {
-                    if (lightCameras[i] != null)
-                    {
-                        passData.viewM[i] = lightCameras[i].worldToCameraMatrix;
-                        passData.viewM[i].m00 *= widthScale;
-                    }
-                }
+                passData.viewM = lightCameras[0].worldToCameraMatrix;
+                passData.viewM.m00 *= widthScale;
             }
 
             // Set global properties
@@ -144,14 +125,13 @@ namespace ToonGraphics
             float invHalfShadowMapWidth = 0.5f * invShadowMapWidth;
             float invHalfShadowMapHeight = 0.5f * invShadowMapHeight;
 
-            cmd.SetGlobalVector(IDs._CharShadowBias, passData.bias);
-            cmd.SetGlobalMatrixArray(IDs._ViewMatrix, passData.viewM);
+            cmd.SetGlobalVector(IDs._CharShadowParams, new Vector4(passData.bias.x, passData.bias.y, passData.stepOffset, 0));
+            cmd.SetGlobalMatrix(IDs._ViewMatrix, passData.viewM);
             cmd.SetGlobalMatrix(IDs._ProjMatrix, passData.projectM);
 
             cmd.SetGlobalVector(IDs._ShadowOffset0, new Vector4(-invHalfShadowMapWidth, -invHalfShadowMapHeight, invHalfShadowMapWidth, -invHalfShadowMapHeight));
             cmd.SetGlobalVector(IDs._ShadowOffset1, new Vector4(-invHalfShadowMapWidth, invHalfShadowMapHeight, invHalfShadowMapWidth, invHalfShadowMapHeight));
             cmd.SetGlobalVector(IDs._ShadowMapSize, new Vector4(invShadowMapWidth, invShadowMapHeight, s_TextureSize[0], s_TextureSize[1]));
-            cmd.SetGlobalVector(IDs._ShadowStepOffset, passData.stepOffset);
         }
 
         // Cleanup any allocated resources that were created during the execution of this render pass.
@@ -178,32 +158,11 @@ namespace ToonGraphics
             {
                 // Shadowmap
                 SetCharShadowConfig(cmd, passData, ref renderingData);
-                cmd.SetGlobalFloat(IDs._ShadowMapIndex, 0);
                 CoreUtils.SetRenderTarget(cmd, passData.charShadowRT, ClearFlag.Color, 0, CubemapFace.Unknown, 0);
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
                 context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
-
-                if (passData.enableAdditionalShadow)
-                {
-                    context.ExecuteCommandBuffer(cmd);
-                    cmd.Clear();
-                    var charShadowDirections = new Vector4[3] { Vector4.zero, Vector4.zero, Vector4.zero };
-                    var lightCameras = CharShadowCamera.Instance.lightCameras;
-                    for (int i = 0; i < CharacterShadowUtils.activeSpotLightCount; i++)
-                    {
-                        if (lightCameras[i + 1] == null)
-                            continue;
-                        charShadowDirections[i] = lightCameras[i + 1].transform.rotation * Vector3.forward;
-                        CoreUtils.SetRenderTarget(cmd, passData.charShadowRT, ClearFlag.Color, 0, CubemapFace.Unknown, i + 1);
-                        cmd.SetGlobalFloat(IDs._ShadowMapIndex, i + 1);
-                        context.ExecuteCommandBuffer(cmd);
-                        cmd.Clear();
-                        context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
-                    }
-                    cmd.SetGlobalVectorArray(IDs._CharShadowLightDirections, charShadowDirections);
-                }
             }
 
             context.ExecuteCommandBuffer(cmd);
@@ -214,13 +173,13 @@ namespace ToonGraphics
         {
             public FilteringSettings filteringSettings;
             public ProfilingSampler profilingSampler;
-            public Matrix4x4[] viewM;
+            public Matrix4x4 viewM;
             public Matrix4x4 projectM;
-            public Vector4 bias;
-            public Vector4 stepOffset;
+            public Vector2 bias;
+            public float stepOffset;
             public int precision;
-            public bool enableAdditionalShadow;
-            public bool useBrightestLightOnly;
+            public bool useBrightestLight;
+            public LayerMask followLightLayer;
             public int activeSpotlightCount;
             public RTHandle charShadowRT;
         }

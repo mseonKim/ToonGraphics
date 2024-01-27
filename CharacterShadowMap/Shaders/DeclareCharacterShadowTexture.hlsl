@@ -5,7 +5,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 #include "./CharacterShadowTransforms.hlsl"
 
-#define MAX_CHAR_SHADOWMAPS 4
+#define MAX_CHAR_SHADOWMAPS 1
 
 half LinearStep_(float m, float M, float x)
 {
@@ -14,23 +14,9 @@ half LinearStep_(float m, float M, float x)
 
 uint LocalLightIndexToShadowmapIndex(int lightindex)
 {
-    if (_UseAdditonalCharShadow > 0)
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            if (lightindex == (int)_CharShadowLocalLightIndices[i])
-            {
-                return (uint)(i + 1);
-            }
-        }
-    }
-    else if (_UseBrightestLightOnly > 0)
-    {
-        if (lightindex == (int)_CharShadowLocalLightIndices[0])
-        {
-            return 0;
-        }
-    }
+    if (_UseBrightestLight > 0 && lightindex == _CharShadowLocalLightIndex)
+        return 0;
+
     return MAX_CHAR_SHADOWMAPS;
 }
 
@@ -39,9 +25,9 @@ uint LocalLightIndexToShadowmapIndex(int lightindex)
         if (i >= MAX_CHAR_SHADOWMAPS) \
             return 0; }
 
-float3 TransformWorldToCharShadowCoord(float3 worldPos, int shadowmapIdx = 0)
+float3 TransformWorldToCharShadowCoord(float3 worldPos)
 {
-    float4 clipPos = CharShadowWorldToHClip(worldPos, shadowmapIdx);
+    float4 clipPos = CharShadowWorldToHClip(worldPos);
 #if UNITY_REVERSED_Z
     clipPos.z = min(clipPos.z, UNITY_NEAR_CLIP_VALUE);
 #else
@@ -63,14 +49,14 @@ void ScaleUVForCascadeCharShadow(inout float2 uv)
     uv = uv * _CharShadowCascadeParams.y - (_CharShadowCascadeParams.y * 0.5 + 0.5);
 }
 
-half SampleCharacterShadowmap(float2 uv, float z, uint shadowmapIdx = 0)
+half SampleCharacterShadowmap(float2 uv, float z)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
-    float var = SAMPLE_TEXTURE2D_ARRAY(_CharShadowMap, sampler_CharShadowMap, uv, shadowmapIdx).r;
-    return (var - z) > lerp(_CharShadowBias.x, _CharShadowBias.z, shadowmapIdx > 0);
+    float var = SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv).r;
+    return (var - z) > _CharShadowBias.x;
 }
 
-half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
+half SampleCharacterShadowmapFiltered(float2 uv, float z)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
@@ -79,40 +65,40 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z, uint shadowmapIdx = 0)
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharShadowmapSize, uv, fetchesWeights, fetchesUV);
 
-    float attenuation = fetchesWeights[0] * SampleCharacterShadowmap(fetchesUV[0].xy, z, shadowmapIdx)
-                + fetchesWeights[1] * SampleCharacterShadowmap(fetchesUV[1].xy, z, shadowmapIdx)
-                + fetchesWeights[2] * SampleCharacterShadowmap(fetchesUV[2].xy, z, shadowmapIdx)
-                + fetchesWeights[3] * SampleCharacterShadowmap(fetchesUV[3].xy, z, shadowmapIdx)
-                + fetchesWeights[4] * SampleCharacterShadowmap(fetchesUV[4].xy, z, shadowmapIdx)
-                + fetchesWeights[5] * SampleCharacterShadowmap(fetchesUV[5].xy, z, shadowmapIdx)
-                + fetchesWeights[6] * SampleCharacterShadowmap(fetchesUV[6].xy, z, shadowmapIdx)
-                + fetchesWeights[7] * SampleCharacterShadowmap(fetchesUV[7].xy, z, shadowmapIdx)
-                + fetchesWeights[8] * SampleCharacterShadowmap(fetchesUV[8].xy, z, shadowmapIdx);
+    float attenuation = fetchesWeights[0] * SampleCharacterShadowmap(fetchesUV[0].xy, z)
+                + fetchesWeights[1] * SampleCharacterShadowmap(fetchesUV[1].xy, z)
+                + fetchesWeights[2] * SampleCharacterShadowmap(fetchesUV[2].xy, z)
+                + fetchesWeights[3] * SampleCharacterShadowmap(fetchesUV[3].xy, z)
+                + fetchesWeights[4] * SampleCharacterShadowmap(fetchesUV[4].xy, z)
+                + fetchesWeights[5] * SampleCharacterShadowmap(fetchesUV[5].xy, z)
+                + fetchesWeights[6] * SampleCharacterShadowmap(fetchesUV[6].xy, z)
+                + fetchesWeights[7] * SampleCharacterShadowmap(fetchesUV[7].xy, z)
+                + fetchesWeights[8] * SampleCharacterShadowmap(fetchesUV[8].xy, z);
 #else
     float ow = _CharShadowmapSize.x * _CharShadowCascadeParams.y;
     float oh = _CharShadowmapSize.y * _CharShadowCascadeParams.y;
-    float attenuation = SampleCharacterShadowmap(uv, z, shadowmapIdx)
-                + SampleCharacterShadowmap(uv + float2(ow, ow), z, shadowmapIdx)
-                + SampleCharacterShadowmap(uv + float2(ow, -ow), z, shadowmapIdx)
-                + SampleCharacterShadowmap(uv + float2(-ow, ow), z, shadowmapIdx)
-                + SampleCharacterShadowmap(uv + float2(-ow, -ow), z, shadowmapIdx);
+    float attenuation = SampleCharacterShadowmap(uv, z)
+                + SampleCharacterShadowmap(uv + float2(ow, ow), z)
+                + SampleCharacterShadowmap(uv + float2(ow, -ow), z)
+                + SampleCharacterShadowmap(uv + float2(-ow, ow), z)
+                + SampleCharacterShadowmap(uv + float2(-ow, -ow), z);
     attenuation /= 5.0f;
 #endif
 
-    // float offset = lerp(_CharShadowStepOffset.x, _CharShadowStepOffset.y, shadowmapIdx > 0);
+    // float offset = _CharShadowStepOffset;
     // return LinearStep_(offset - 0.1, offset, attenuation);
     return attenuation;
 }
 
 
-half SampleTransparentShadowmap(float2 uv, float z, SamplerState s, uint shadowmapIdx = 0)
+half SampleTransparentShadowmap(float2 uv, float z, SamplerState s)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
-    float var = SAMPLE_TEXTURE2D_ARRAY(_TransparentShadowMap, s, uv, shadowmapIdx).r;
-    return (var - z) > lerp(_CharShadowBias.x, _CharShadowBias.z, shadowmapIdx > 0);
+    float var = SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv).r;
+    return (var - z) > _CharShadowBias.x;
 }
 
-half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s, uint shadowmapIdx = 0)
+half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
@@ -121,56 +107,59 @@ half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s, uint
     real2 fetchesUV[9];
     SampleShadow_ComputeSamples_Tent_5x5(_CharTransparentShadowmapSize, uv, fetchesWeights, fetchesUV);
 
-    float attenuation = fetchesWeights[0] * SampleTransparentShadowmap(fetchesUV[0].xy, z, s, shadowmapIdx)
-                + fetchesWeights[1] * SampleTransparentShadowmap(fetchesUV[1].xy, z, s, shadowmapIdx)
-                + fetchesWeights[2] * SampleTransparentShadowmap(fetchesUV[2].xy, z, s, shadowmapIdx)
-                + fetchesWeights[3] * SampleTransparentShadowmap(fetchesUV[3].xy, z, s, shadowmapIdx)
-                + fetchesWeights[4] * SampleTransparentShadowmap(fetchesUV[4].xy, z, s, shadowmapIdx)
-                + fetchesWeights[5] * SampleTransparentShadowmap(fetchesUV[5].xy, z, s, shadowmapIdx)
-                + fetchesWeights[6] * SampleTransparentShadowmap(fetchesUV[6].xy, z, s, shadowmapIdx)
-                + fetchesWeights[7] * SampleTransparentShadowmap(fetchesUV[7].xy, z, s, shadowmapIdx)
-                + fetchesWeights[8] * SampleTransparentShadowmap(fetchesUV[8].xy, z, s, shadowmapIdx);
+    float attenuation = fetchesWeights[0] * SampleTransparentShadowmap(fetchesUV[0].xy, z, s)
+                + fetchesWeights[1] * SampleTransparentShadowmap(fetchesUV[1].xy, z, s)
+                + fetchesWeights[2] * SampleTransparentShadowmap(fetchesUV[2].xy, z, s)
+                + fetchesWeights[3] * SampleTransparentShadowmap(fetchesUV[3].xy, z, s)
+                + fetchesWeights[4] * SampleTransparentShadowmap(fetchesUV[4].xy, z, s)
+                + fetchesWeights[5] * SampleTransparentShadowmap(fetchesUV[5].xy, z, s)
+                + fetchesWeights[6] * SampleTransparentShadowmap(fetchesUV[6].xy, z, s)
+                + fetchesWeights[7] * SampleTransparentShadowmap(fetchesUV[7].xy, z, s)
+                + fetchesWeights[8] * SampleTransparentShadowmap(fetchesUV[8].xy, z, s);
 #else
     float ow = _CharTransparentShadowmapSize.x * _CharShadowCascadeParams.y;
     float oh = _CharTransparentShadowmapSize.y * _CharShadowCascadeParams.y;
-    float attenuation = SampleTransparentShadowmap(uv, z, s, shadowmapIdx)
-                + SampleTransparentShadowmap(uv + float2(ow, ow), z, s, shadowmapIdx)
-                + SampleTransparentShadowmap(uv + float2(ow, -ow), z, s, shadowmapIdx)
-                + SampleTransparentShadowmap(uv + float2(-ow, ow), z, s, shadowmapIdx)
-                + SampleTransparentShadowmap(uv + float2(-ow, -ow), z, s, shadowmapIdx);
+    float attenuation = SampleTransparentShadowmap(uv, z, s)
+                + SampleTransparentShadowmap(uv + float2(ow, ow), z, s)
+                + SampleTransparentShadowmap(uv + float2(ow, -ow), z, s)
+                + SampleTransparentShadowmap(uv + float2(-ow, ow), z, s)
+                + SampleTransparentShadowmap(uv + float2(-ow, -ow), z, s);
     attenuation /= 5.0f;
 #endif
-    float offset = lerp(_CharShadowStepOffset.x, _CharShadowStepOffset.y, shadowmapIdx > 0);
-    return LinearStep_(offset - 0.2, offset, attenuation);
-    // return smoothstep(0, 1, attenuation);
+    // float offset = _CharShadowStepOffset;
+    // return LinearStep_(offset - 0.2, offset, attenuation);
+    return attenuation;
 }
 
-half TransparentAttenuation(float2 uv, float opacity, uint shadowmapIdx = 0)
+half TransparentAttenuation(float2 uv, float opacity)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     // Saturate since texture could have value more than 1
-    return saturate(SAMPLE_TEXTURE2D_ARRAY(_TransparentAlphaSum, sampler_CharShadowMap, uv, shadowmapIdx).r - opacity);    // Total alpha sum - current pixel's alpha
+    return saturate(SAMPLE_TEXTURE2D(_TransparentAlphaSum, sampler_CharShadowMap, uv).r - opacity);    // Total alpha sum - current pixel's alpha
 }
 
-half GetTransparentShadow(float2 uv, float z, float opacity, uint shadowmapIdx = 0)
+half GetTransparentShadow(float2 uv, float z, float opacity)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
-    half hidden = SampleTransparentShadowmapFiltered(uv, z, sampler_CharShadowMap, shadowmapIdx);
+    half hidden = SampleTransparentShadowmapFiltered(uv, z, sampler_CharShadowMap);
     // half hidden = SampleTransparentShadowmap(uv, z, sampler_CharShadowMap, shadowmapIdx);
-    half atten = TransparentAttenuation(uv, opacity, shadowmapIdx);
+    half atten = TransparentAttenuation(uv, opacity);
     return min(hidden, atten);
 }
 
-half CharacterAndTransparentShadowmap(float2 uv, float z, float opacity, int shadowmapIdx = 0)
+half CharacterAndTransparentShadowmap(float2 uv, float z, float opacity)
 {
     // Scale uv first for cascade char shadow map
     ScaleUVForCascadeCharShadow(uv);
-    return max(SampleCharacterShadowmapFiltered(uv, z, shadowmapIdx), GetTransparentShadow(uv, z, opacity, shadowmapIdx));
+    return max(SampleCharacterShadowmapFiltered(uv, z), GetTransparentShadow(uv, z, opacity));
     // return max(SampleCharacterShadowmap(uv, z, shadowmapIdx), GetTransparentShadow(uv, z, opacity, shadowmapIdx));
 }
 
 half SampleCharacterAndTransparentShadow(float3 worldPos, float opacity)
 {
+    if (dot(_MainLightPosition.xyz, _BrightestLightDirection.xyz) < 0.9999)
+        return 0;
+
     if (IfCharShadowCulled(TransformWorldToView(worldPos).z))
         return 0;
 
@@ -189,23 +178,8 @@ half SampleAdditionalCharacterAndTransparentShadow(float3 worldPos, float opacit
     if (IfCharShadowCulled(TransformWorldToView(worldPos).z))
         return 0;
 
-    float3 coord = TransformWorldToCharShadowCoord(worldPos, i);
-    return CharacterAndTransparentShadowmap(coord.xy, coord.z, opacity, i);
-}
-
-half GetLocalCharacterShadowmapForVoxelLighting(float3 worldPos, int lightIndex = 0)
-{
-#ifndef USE_FORWARD_PLUS
-    return 0;
-#endif
-    uint i;
-    ADDITIONAL_CHARSHADOW_CHECK(i, lightIndex)
-
-    float3 coord = TransformWorldToCharShadowCoord(worldPos, i);
-    float2 uv = coord.xy;
-    coord.z = max(coord.z, 0.001f);
-    ScaleUVForCascadeCharShadow(uv);
-    return SAMPLE_TEXTURE2D_ARRAY_LOD(_CharShadowMap, sampler_CharShadowMap, uv, i, 0).r > coord.z;
+    float3 coord = TransformWorldToCharShadowCoord(worldPos);
+    return CharacterAndTransparentShadowmap(coord.xy, coord.z, opacity);
 }
 
 #endif

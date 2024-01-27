@@ -27,20 +27,16 @@ namespace ToonGraphics
     {
         [Tooltip("If enabled, Transparent shadowmap will be rendered.")]
         public bool enableTransparentShadow = false;
-        [Tooltip("If enabled, use 4 Shadowmaps. (MainLight & 3 additional spot lights)")]
-        public bool enableAdditionalShadow = false;
-        [Tooltip("If enabled, use the stronger light among MainLight & the brighest spot light for the character shadow map. It will ignore 3 other additional shadows even though 'enableAdditionalShadow' is enabled.")]
-        public bool useBrightestLightOnly = false;
-        public float bias;
-        public float normalBias;
-        public float additionalBias;
-        public float additionalNormalBias;
-        public float stepOffset = 0.99f;
-        public float additionalStepOffset = 0.99f;
-        public CustomShadowMapSize textureScale = CustomShadowMapSize.X2;
+        [Tooltip("[Forward+ Only] If enabled, use the stronger light among MainLight & the brighest spot light.")]
+        public bool useBrightestLight = true;
+        public LayerMask followLayerMask;
+        public float bias = 0.001f;
+        public float normalBias = 0.001f;
+        public float stepOffset = 0.99f;    // Currently unused
+        public CustomShadowMapSize textureScale = CustomShadowMapSize.X4;
         public CustomShadowMapSize transparentTextureScale = CustomShadowMapSize.X2;
         public CustomShadowMapPrecision precision = CustomShadowMapPrecision.RFloat;
         public CharSoftShadowMode softShadowMode = CharSoftShadowMode.Normal;
-        public Vector4 cascadeSplit = new Vector4(2, 6, 14, 20);
+        public Vector4 cascadeSplit = new Vector4(3.5f, 7f, 11f, 20f);
     }
 }
