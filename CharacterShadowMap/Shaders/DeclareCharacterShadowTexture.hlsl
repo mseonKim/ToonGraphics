@@ -49,6 +49,45 @@ void ScaleUVForCascadeCharShadow(inout float2 uv)
     uv = uv * _CharShadowCascadeParams.y - (_CharShadowCascadeParams.y * 0.5 + 0.5);
 }
 
+// Reference: UE5 SpiralBlur-Texture
+half SampleSpiralBlur(TEXTURE2D_PARAM(tex, samplerTex), float2 UV, float Distance, float DistanceSteps = 16, float RadialSteps = 8, float RadialOffset = 0.62, float KernelPower = 1)
+{
+    half CurColor = 0;
+    float2 NewUV = UV;
+    int i = 0;
+    float StepSize = Distance / (int)DistanceSteps;
+    float CurDistance = 0;
+    float2 CurOffset = 0;
+    float SubOffset = 0;
+    float accumdist = 0;
+
+    if (DistanceSteps < 1)
+    {
+        return SAMPLE_TEXTURE2D(tex, samplerTex, UV).r;		
+    }
+
+    while (i < (int)DistanceSteps)
+    {
+        CurDistance += StepSize;
+        for (int j = 0; j < (int)RadialSteps; j++)
+        {
+            SubOffset +=1;
+            CurOffset.x = cos(TWO_PI * (SubOffset / RadialSteps));
+            CurOffset.y = sin(TWO_PI * (SubOffset / RadialSteps));
+            NewUV.x = UV.x + CurOffset.x * CurDistance;
+            NewUV.y = UV.y + CurOffset.y * CurDistance;
+            float distpow = pow(CurDistance, KernelPower);
+            CurColor += SAMPLE_TEXTURE2D(tex, samplerTex, NewUV).r * distpow;		
+            accumdist += distpow;
+        }
+        SubOffset += RadialOffset;
+        i++;
+    }
+    CurColor = CurColor;
+    CurColor /= accumdist;
+    return CurColor;
+}
+
 half SampleCharacterShadowmap(float2 uv, float z)
 {
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
@@ -61,33 +100,21 @@ half SampleCharacterShadowmapFiltered(float2 uv, float z)
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
 #ifdef _HIGH_CHAR_SOFTSHADOW
-    real fetchesWeights[9];
-    real2 fetchesUV[9];
-    SampleShadow_ComputeSamples_Tent_5x5(_CharShadowmapSize, uv, fetchesWeights, fetchesUV);
-
-    float attenuation = fetchesWeights[0] * SampleCharacterShadowmap(fetchesUV[0].xy, z)
-                + fetchesWeights[1] * SampleCharacterShadowmap(fetchesUV[1].xy, z)
-                + fetchesWeights[2] * SampleCharacterShadowmap(fetchesUV[2].xy, z)
-                + fetchesWeights[3] * SampleCharacterShadowmap(fetchesUV[3].xy, z)
-                + fetchesWeights[4] * SampleCharacterShadowmap(fetchesUV[4].xy, z)
-                + fetchesWeights[5] * SampleCharacterShadowmap(fetchesUV[5].xy, z)
-                + fetchesWeights[6] * SampleCharacterShadowmap(fetchesUV[6].xy, z)
-                + fetchesWeights[7] * SampleCharacterShadowmap(fetchesUV[7].xy, z)
-                + fetchesWeights[8] * SampleCharacterShadowmap(fetchesUV[8].xy, z);
+    float distance = _CharShadowmapSize.x * _CharShadowCascadeParams.y;
+    float attenuation = SampleSpiralBlur(_CharShadowMap, sampler_CharShadowMap, uv, distance);
 #else
     float ow = _CharShadowmapSize.x * _CharShadowCascadeParams.y;
     float oh = _CharShadowmapSize.y * _CharShadowCascadeParams.y;
-    float attenuation = SampleCharacterShadowmap(uv, z)
-                + SampleCharacterShadowmap(uv + float2(ow, ow), z)
-                + SampleCharacterShadowmap(uv + float2(ow, -ow), z)
-                + SampleCharacterShadowmap(uv + float2(-ow, ow), z)
-                + SampleCharacterShadowmap(uv + float2(-ow, -ow), z);
+    float attenuation = SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv).r
+                        + SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv + float2(ow, ow)).r
+                        + SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv + float2(ow, -ow)).r
+                        + SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv + float2(-ow, ow)).r
+                        + SAMPLE_TEXTURE2D(_CharShadowMap, sampler_CharShadowMap, uv + float2(-ow, -ow)).r;
     attenuation /= 5.0f;
 #endif
 
-    // float offset = _CharShadowStepOffset;
-    // return LinearStep_(offset - 0.1, offset, attenuation);
-    return attenuation;
+    float smoothness = _CharShadowStepSmoothness;
+    return LinearStep_(-smoothness, smoothness, (attenuation - z) - _CharShadowBias.x); // (attenuation - z) > _CharShadowBias.x;
 }
 
 
@@ -103,32 +130,21 @@ half SampleTransparentShadowmapFiltered(float2 uv, float z, SamplerState s)
     // UV must be the scaled value with ScaleUVForCascadeCharShadow()
     z += 0.00001;
 #if _HIGH_CHAR_SOFTSHADOW
-    real fetchesWeights[9];
-    real2 fetchesUV[9];
-    SampleShadow_ComputeSamples_Tent_5x5(_CharTransparentShadowmapSize, uv, fetchesWeights, fetchesUV);
-
-    float attenuation = fetchesWeights[0] * SampleTransparentShadowmap(fetchesUV[0].xy, z, s)
-                + fetchesWeights[1] * SampleTransparentShadowmap(fetchesUV[1].xy, z, s)
-                + fetchesWeights[2] * SampleTransparentShadowmap(fetchesUV[2].xy, z, s)
-                + fetchesWeights[3] * SampleTransparentShadowmap(fetchesUV[3].xy, z, s)
-                + fetchesWeights[4] * SampleTransparentShadowmap(fetchesUV[4].xy, z, s)
-                + fetchesWeights[5] * SampleTransparentShadowmap(fetchesUV[5].xy, z, s)
-                + fetchesWeights[6] * SampleTransparentShadowmap(fetchesUV[6].xy, z, s)
-                + fetchesWeights[7] * SampleTransparentShadowmap(fetchesUV[7].xy, z, s)
-                + fetchesWeights[8] * SampleTransparentShadowmap(fetchesUV[8].xy, z, s);
+    float distance = _CharTransparentShadowmapSize.x * _CharShadowCascadeParams.y;
+    float attenuation = SampleSpiralBlur(_TransparentShadowMap, s, uv, distance);
 #else
     float ow = _CharTransparentShadowmapSize.x * _CharShadowCascadeParams.y;
     float oh = _CharTransparentShadowmapSize.y * _CharShadowCascadeParams.y;
-    float attenuation = SampleTransparentShadowmap(uv, z, s)
-                + SampleTransparentShadowmap(uv + float2(ow, ow), z, s)
-                + SampleTransparentShadowmap(uv + float2(ow, -ow), z, s)
-                + SampleTransparentShadowmap(uv + float2(-ow, ow), z, s)
-                + SampleTransparentShadowmap(uv + float2(-ow, -ow), z, s);
+    float attenuation = SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv).r
+                        + SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv + float2(ow, ow)).r
+                        + SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv + float2(ow, -ow)).r
+                        + SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv + float2(-ow, ow)).r
+                        + SAMPLE_TEXTURE2D(_TransparentShadowMap, s, uv + float2(-ow, -ow)).r;
     attenuation /= 5.0f;
 #endif
-    // float offset = _CharShadowStepOffset;
-    // return LinearStep_(offset - 0.2, offset, attenuation);
-    return attenuation;
+
+    float smoothness = _CharShadowStepSmoothness;
+    return LinearStep_(-smoothness, smoothness, (attenuation - z) - _CharShadowBias.x);
 }
 
 half TransparentAttenuation(float2 uv, float opacity)

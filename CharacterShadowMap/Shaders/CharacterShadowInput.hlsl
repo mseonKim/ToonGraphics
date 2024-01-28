@@ -17,8 +17,8 @@ CBUFFER_START(CharShadow)
     uint _char_shadow_pad01_;
 CBUFFER_END
 
-#define _CharShadowBias         _CharShadowParams.xy
-#define _CharShadowStepOffset   _CharShadowParams.z
+#define _CharShadowBias             _CharShadowParams.xy
+#define _CharShadowStepSmoothness   _CharShadowParams.z
 
 TEXTURE2D(_CharShadowMap);
 SAMPLER(sampler_CharShadowMap);

@@ -79,7 +79,7 @@ namespace ToonGraphics
         {
             m_ProfilingSampler = new ProfilingSampler(featureName);
             m_PassData.bias = new Vector2(config.bias, config.normalBias);
-            m_PassData.stepOffset = config.stepOffset;
+            m_PassData.stepSmoothness = config.stepSmoothness;
             var scale = (int)config.textureScale;
             m_cascadeResolutionScale = CharacterShadowUtils.FindCascadedShadowMapResolutionScale(renderingData, config.cascadeSplit);
             m_cascadeMaxDistance = config.cascadeSplit.w;
@@ -125,7 +125,7 @@ namespace ToonGraphics
             float invHalfShadowMapWidth = 0.5f * invShadowMapWidth;
             float invHalfShadowMapHeight = 0.5f * invShadowMapHeight;
 
-            cmd.SetGlobalVector(IDs._CharShadowParams, new Vector4(passData.bias.x, passData.bias.y, passData.stepOffset, 0));
+            cmd.SetGlobalVector(IDs._CharShadowParams, new Vector4(passData.bias.x, passData.bias.y, passData.stepSmoothness, 0));
             cmd.SetGlobalMatrix(IDs._ViewMatrix, passData.viewM);
             cmd.SetGlobalMatrix(IDs._ProjMatrix, passData.projectM);
 
@@ -176,7 +176,7 @@ namespace ToonGraphics
             public Matrix4x4 viewM;
             public Matrix4x4 projectM;
             public Vector2 bias;
-            public float stepOffset;
+            public float stepSmoothness;
             public int precision;
             public bool useBrightestLight;
             public LayerMask followLightLayer;

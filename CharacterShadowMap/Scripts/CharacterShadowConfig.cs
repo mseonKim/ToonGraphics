@@ -32,7 +32,7 @@ namespace ToonGraphics
         public LayerMask followLayerMask;
         public float bias = 0.001f;
         public float normalBias = 0.001f;
-        public float stepOffset = 0.99f;    // Currently unused
+        public float stepSmoothness = 0.0001f;
         public CustomShadowMapSize textureScale = CustomShadowMapSize.X4;
         public CustomShadowMapSize transparentTextureScale = CustomShadowMapSize.X2;
         public CustomShadowMapPrecision precision = CustomShadowMapPrecision.RFloat;
