@@ -1,15 +1,13 @@
 // Copied from URP DepthNormalsPass.hlsl
 
-#ifndef UNIVERSAL_DEPTH_NORMALS_PASS_MATERIAL_TRANSFORM_INCLUDED
-#define UNIVERSAL_DEPTH_NORMALS_PASS_MATERIAL_TRANSFORM_INCLUDED
+#ifndef SSR_FORWARD_UNIVERSAL_DEPTH_NORMALS_PASS_INCLUDED
+#define SSR_FORWARD_UNIVERSAL_DEPTH_NORMALS_PASS_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #if defined(LOD_FADE_CROSSFADE)
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/LODCrossFade.hlsl"
 #endif
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RealtimeLights.hlsl"
-
-#include "MaterialTransformInput.hlsl"
 
 struct Attributes
 {
@@ -57,7 +55,6 @@ void DepthNormalsFragment(
 )
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-    MaterialTransformerFragDiscard(input.positionOS);
 
     half4 sampleVar = SampleAlbedoAlpha(input.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
     half smoothness = SampleMetallicSpecGloss(input.uv, sampleVar.a).a;

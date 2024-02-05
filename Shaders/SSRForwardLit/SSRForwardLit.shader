@@ -1,4 +1,4 @@
-Shader "Universal Render Pipeline/StylizedLit"
+Shader "Universal Render Pipeline/SSRLit"
 {
     Properties
     {
@@ -7,8 +7,6 @@ Shader "Universal Render Pipeline/StylizedLit"
 
         [MainTexture] _BaseMap("Albedo", 2D) = "white" {}
         [MainColor] _BaseColor("Color", Color) = (1,1,1,1)
-        _BaseColorStep("Color Threshold", Range(0.0, 1.0)) = 0.5
-        _BaseColorStepFeather("Color Smooth", Range(0.0, 1.0)) = 0.001
 
         _Cutoff("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
 
@@ -20,9 +18,6 @@ Shader "Universal Render Pipeline/StylizedLit"
 
         _SpecColor("Specular", Color) = (0.2, 0.2, 0.2)
         _SpecGlossMap("Specular", 2D) = "white" {}
-        _SpecIntensity("Specular Intensity", Range(0.0, 16.0)) = 4.0
-        _SpecStep("Specular Threshold", Range(0.0, 1.0)) = 0.5
-        _SpecStepFeather("Specular Smooth", Range(0.0, 1.0)) = 0.001
 
         [ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
         [ToggleOff] _EnvironmentReflections("Environment Reflections", Float) = 1.0
@@ -170,8 +165,8 @@ Shader "Universal Render Pipeline/StylizedLit"
             #pragma instancing_options renderinglayer
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
-            #include "StylizedLitInput.hlsl"
-            #include "StylizedLitForwardPass.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitForwardPass.hlsl"
             ENDHLSL
         }
 
@@ -394,7 +389,7 @@ Shader "Universal Render Pipeline/StylizedLit"
             // -------------------------------------
             // Includes
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
-            #include "StylizedLitDepthNormalsPass.hlsl"
+            #include "SSRForwardLitDepthNormalsPass.hlsl"
             ENDHLSL
         }
 
@@ -476,5 +471,5 @@ Shader "Universal Render Pipeline/StylizedLit"
     }
 
     FallBack "Hidden/Universal Render Pipeline/FallbackError"
-    CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.StylizedLitShader"
+    CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.LitShader"
 }
