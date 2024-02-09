@@ -54,5 +54,48 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			}
 			ENDHLSL
 		}
+
+		Pass
+		{
+			ZTest Always
+			ZWrite Off
+			Cull Off
+			Blend One OneMinusSrcAlpha
+
+			HLSLPROGRAM
+			#pragma vertex OITVert
+			#pragma fragment OITCopyFrag
+			#pragma target 5.0
+
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+			#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+			#include "./LinkedListRendering.hlsl"
+
+			Varyings OITVert(Attributes input)
+			{
+				Varyings output;
+
+			#if SHADER_API_GLES
+				float4 pos = input.positionOS;
+				float2 uv  = input.uv;
+			#else
+				float4 pos = GetFullScreenTriangleVertexPosition(input.vertexID);
+				float2 uv  = GetFullScreenTriangleTexCoord(input.vertexID);
+			#endif
+
+				output.positionCS = pos;
+				output.texcoord   = uv;
+				return output;
+			}
+
+			//Pixel function returns a solid color for each point.
+			float4 OITCopyFrag(Varyings i) : SV_Target
+			{
+				// Retrieve current color from background texture
+				float4 finalColor = float4(renderLinkedListOITCopy(i.positionCS.xy, 0), 1);
+				return finalColor;
+			}
+			ENDHLSL
+		}
 	}
 }

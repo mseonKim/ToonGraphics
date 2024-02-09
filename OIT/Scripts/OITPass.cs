@@ -11,6 +11,7 @@ namespace ToonGraphics
         private readonly OitLinkedList orderIndependentTransparency;
         private Material material;
         private RTHandle m_CopiedColor;
+        private RTHandle m_OITCopyTextureRT;
         private static readonly int s_BlitTextureShaderID = Shader.PropertyToID("_BlitTexture");
         private static ShaderTagId s_OutlineShaderTagId = new ShaderTagId("TransparentOutline");
         private ProfilingSampler m_ProfilingSampler;
@@ -33,6 +34,9 @@ namespace ToonGraphics
             var colorCopyDescriptor = renderingData.cameraData.cameraTargetDescriptor;
             colorCopyDescriptor.depthBufferBits = (int) DepthBits.None;
             RenderingUtils.ReAllocateIfNeeded(ref m_CopiedColor, colorCopyDescriptor, name: "_OITPassColorCopy");
+            RenderingUtils.ReAllocateIfNeeded(ref m_OITCopyTextureRT, colorCopyDescriptor, name: "_OITCopyTexture");
+
+            Shader.SetGlobalTexture("_OITCopyTexture", m_OITCopyTextureRT);
         }
 
         public void Setup(string featureName)
@@ -56,8 +60,11 @@ namespace ToonGraphics
                     Blitter.BlitCameraTexture(cmd, src, m_CopiedColor);
                     material.SetTexture(s_BlitTextureShaderID, m_CopiedColor);
 
+                    CoreUtils.SetRenderTarget(cmd, m_OITCopyTextureRT);
+                    CoreUtils.DrawFullScreen(cmd, material, null, 1);
+                    
                     CoreUtils.SetRenderTarget(cmd, src);
-                    CoreUtils.DrawFullScreen(cmd, material);
+                    CoreUtils.DrawFullScreen(cmd, material, null, 0);
                     // Blitter.BlitTexture(cmd, src, src, material, 0);
 
                     if (m_UseTransparentOutline)
@@ -77,6 +84,7 @@ namespace ToonGraphics
         {
             orderIndependentTransparency.Release();
             m_CopiedColor?.Release();
+            m_OITCopyTextureRT?.Release();
         }
     }
 
