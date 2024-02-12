@@ -92,7 +92,8 @@ Shader "OrderIndependentTransparency/OitFullscreenRender"
 			float4 OITCopyFrag(Varyings i) : SV_Target
 			{
 				// Retrieve current color from background texture
-				float4 finalColor = float4(renderLinkedListOITCopy(i.positionCS.xy, 0), 1);
+				float4 oitValue = renderLinkedListOITCopy(i.positionCS.xy, 0);
+				float4 finalColor = float4(oitValue.rgb * oitValue.a, 1);
 				return finalColor;
 			}
 			ENDHLSL

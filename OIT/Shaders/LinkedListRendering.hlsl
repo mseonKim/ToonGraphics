@@ -69,7 +69,7 @@ float4 renderLinkedList(float4 col, float2 pos, uint uSampleIndex)
     return col;
 }
 
-float3 renderLinkedListOITCopy(float2 pos, uint uSampleIndex)
+float4 renderLinkedListOITCopy(float2 pos, uint uSampleIndex)
 {
     // Fetch offset of first fragment for current pixel
     // uint uStartOffsetAddress = 4 * (_ScaledScreenParams.x * (pos.y - 0.5) + (pos.x - 0.5));
@@ -112,9 +112,12 @@ float3 renderLinkedListOITCopy(float2 pos, uint uSampleIndex)
     }
 
     float3 col = 0;
+    float alpha = 0;
     if (nNumPixels > 0)
     {
-        col.rgb = UnpackRGBA(SortedPixels[0].pixelColor);
+        float4 sampleVar = UnpackRGBA(SortedPixels[0].pixelColor);
+        col = sampleVar.rgb;
+        alpha = sampleVar.a;
         // Rendering pixels
         for (int k = 1; k < nNumPixels; k++)
         {
@@ -123,10 +126,11 @@ float3 renderLinkedListOITCopy(float2 pos, uint uSampleIndex)
     
             // Manual blending between current fragment and previous one
             col.rgb = lerp(col.rgb, vPixColor.rgb, vPixColor.a);
+            alpha += vPixColor.a;
         }
     }
 
-    return col;
+    return float4(col, saturate(alpha));
 }
 
 #endif // OIT_LINKED_LIST_RENDERING_INCLUDED
