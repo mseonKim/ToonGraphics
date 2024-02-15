@@ -1,0 +1,14 @@
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+
+#pragma kernel CombineOITDepth
+
+TEXTURE2D(_OITDepthTexture);
+RW_TEXTURE2D(float, _CombinedOITDepthTexture);
+
+[numthreads(8,8,1)]
+void CombineOITDepth(uint3 id : SV_DispatchThreadID)
+{
+    // _CombinedOITDepthTexture[id.xy] = LoadSceneDepth(id.xy);
+    _CombinedOITDepthTexture[id.xy] = max(LoadSceneDepth(id.xy), LOAD_TEXTURE2D_X(_OITDepthTexture, id.xy).r);
+}

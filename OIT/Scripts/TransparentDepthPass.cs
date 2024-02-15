@@ -46,6 +46,7 @@
  */
 
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
@@ -56,20 +57,23 @@ namespace ToonGraphics
         /* Static Variables */
         private static readonly ShaderTagId k_ShaderTagId = new ShaderTagId("OITDepth");
         private static int  s_OITDepthTextureId = Shader.PropertyToID("_OITDepthTexture");
+        private static int  s_CombinedOITDepthTextureId = Shader.PropertyToID("_CombinedOITDepthTexture");
 
 
         /* Member Variables */
         private RTHandle m_OITDepthRT;
+        private RTHandle m_CombinedOITDepthRT;
         private ProfilingSampler m_ProfilingSampler;
         private PassData m_PassData;
 
         private FilteringSettings m_FilteringSettings;
 
-        public TransparentDepthPass(RenderPassEvent evt, RenderQueueRange renderQueueRange)
+        public TransparentDepthPass(RenderPassEvent evt, RenderQueueRange renderQueueRange, ComputeShader combineOITDepthCS)
         {
             m_PassData = new PassData();
             m_FilteringSettings = new FilteringSettings(renderQueueRange);
             renderPassEvent = evt;
+            m_PassData.combineOITDepthCS = combineOITDepthCS;
         }
 
         public void Dispose()
@@ -84,10 +88,20 @@ namespace ToonGraphics
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            var descriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.RHalf);
-            descriptor.depthBufferBits = 0;
-            RenderingUtils.ReAllocateIfNeeded(ref m_OITDepthRT, descriptor, FilterMode.Bilinear, name:"_OITDepthTexture");
+            var cameraDescriptor = renderingData.cameraData.cameraTargetDescriptor;
+
+            var descriptor = new RenderTextureDescriptor(cameraDescriptor.width, cameraDescriptor.height, RenderTextureFormat.RHalf, 0);
+            descriptor.sRGB = false;
+            descriptor.autoGenerateMips = false;
+            RenderingUtils.ReAllocateIfNeeded(ref m_OITDepthRT, descriptor, FilterMode.Point, name:"_OITDepthTexture");
             cmd.SetGlobalTexture(s_OITDepthTextureId, m_OITDepthRT.nameID);
+
+            descriptor = new RenderTextureDescriptor(cameraDescriptor.width, cameraDescriptor.height, RenderTextureFormat.RFloat, 0);
+            descriptor.sRGB = false;
+            descriptor.enableRandomWrite = true;
+            descriptor.autoGenerateMips = false;
+            RenderingUtils.ReAllocateIfNeeded(ref m_CombinedOITDepthRT, descriptor, FilterMode.Point, name:"_CombinedOITDepthTexture");
+            cmd.SetGlobalTexture(s_CombinedOITDepthTextureId, m_CombinedOITDepthRT.nameID);
 
             ConfigureTarget(m_OITDepthRT);
             ConfigureClear(ClearFlag.All, Color.black);
@@ -119,6 +133,12 @@ namespace ToonGraphics
 
                 var drawSettings = RenderingUtils.CreateDrawingSettings(k_ShaderTagId, ref renderingData, SortingCriteria.CommonTransparent);
                 context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref filteringSettings);
+
+                if (passData.combineOITDepthCS != null)
+                {
+                    var cameraDescriptor = renderingData.cameraData.cameraTargetDescriptor;
+                    cmd.DispatchCompute(passData.combineOITDepthCS, 0, (cameraDescriptor.width + 7) / 8, (cameraDescriptor.height + 7) / 8, 1);
+                }
             }
 
             context.ExecuteCommandBuffer(cmd);
@@ -128,6 +148,7 @@ namespace ToonGraphics
         private class PassData
         {
             public FilteringSettings filteringSettings;
+            public ComputeShader combineOITDepthCS;
             public ProfilingSampler profilingSampler;
         }
     }

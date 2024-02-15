@@ -14,6 +14,7 @@ namespace ToonGraphics
     {
         public Material fullscreenMaterial;
         public ComputeShader oitComputeUtilsCS;
+        public ComputeShader combineOITDepthCS;
         public bool useTransparentOutline;
         private OitPass m_OitPass;
         private TransparentDepthPass m_TDepthPass;
@@ -22,7 +23,7 @@ namespace ToonGraphics
         {
             m_OitPass?.Cleanup();
             m_OitPass = new OitPass(fullscreenMaterial, oitComputeUtilsCS, useTransparentOutline);
-            m_TDepthPass = new TransparentDepthPass(RenderPassEvent.AfterRenderingOpaques, RenderQueueRange.transparent);
+            m_TDepthPass = new TransparentDepthPass(RenderPassEvent.AfterRenderingOpaques, RenderQueueRange.transparent, combineOITDepthCS);
             m_TDepthPass.ConfigureInput(ScriptableRenderPassInput.None);
         }
 
