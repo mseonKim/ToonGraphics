@@ -40,6 +40,12 @@ Shader "Universal Render Pipeline/SSRLit"
         _DetailNormalMapScale("Scale", Range(0.0, 2.0)) = 1.0
         [Normal] _DetailNormalMap("Normal Map", 2D) = "bump" {}
 
+        // Custom properties
+        [Toggle] _USE_SSS("USE SSS", Float) = 0.0
+        _SSS_Power("SSS Power", Range(1.0, 64.0)) = 16.0
+        _SSS_Scale("SSS Scale", Range(0.0, 4.0)) = 0.5
+        _SSS_NormalDistortion("SSS Normal Distortion", Range(0.0, 1.0)) = 0.5
+
         // SRP batching compatibility for Clear Coat (Not used in Lit)
         [HideInInspector] _ClearCoatMask("_ClearCoatMask", Float) = 0.0
         [HideInInspector] _ClearCoatSmoothness("_ClearCoatSmoothness", Float) = 0.0
@@ -165,8 +171,8 @@ Shader "Universal Render Pipeline/SSRLit"
             #pragma instancing_options renderinglayer
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitForwardPass.hlsl"
+            #include "./SSRLitInput.hlsl"
+            #include "./SSRLitForwardPass.hlsl"
             ENDHLSL
         }
 
@@ -471,5 +477,5 @@ Shader "Universal Render Pipeline/SSRLit"
     }
 
     FallBack "Hidden/Universal Render Pipeline/FallbackError"
-    CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.LitShader"
+    CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.SSRForwardLitShader"
 }
