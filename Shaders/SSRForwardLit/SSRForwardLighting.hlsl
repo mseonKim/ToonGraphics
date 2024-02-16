@@ -24,7 +24,7 @@
 half3 SubsurfaceScattering(float3 lightDir, float3 viewDir, float3 normal, half3 diffuse, half3 lightColor)
 {
     const float3 tr = float3(0.4, 0.25, 0.2);
-    const float H = normalize(lightDir + normal * _SSS_NormalDistortion);
+    const float3 H = normalize(lightDir + normal * _SSS_NormalDistortion);
     float fLTDot = pow(saturate(dot(viewDir, -H)), _SSS_Power) * _SSS_Scale;
     if (fLTDot < 0)
     {
