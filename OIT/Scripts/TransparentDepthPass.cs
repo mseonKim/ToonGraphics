@@ -90,7 +90,7 @@ namespace ToonGraphics
         {
             var cameraDescriptor = renderingData.cameraData.cameraTargetDescriptor;
 
-            var descriptor = new RenderTextureDescriptor(cameraDescriptor.width, cameraDescriptor.height, RenderTextureFormat.RHalf, 0);
+            var descriptor = new RenderTextureDescriptor(cameraDescriptor.width, cameraDescriptor.height, RenderTextureFormat.RFloat, 0);
             descriptor.sRGB = false;
             descriptor.autoGenerateMips = false;
             RenderingUtils.ReAllocateIfNeeded(ref m_OITDepthRT, descriptor, FilterMode.Point, name:"_OITDepthTexture");
