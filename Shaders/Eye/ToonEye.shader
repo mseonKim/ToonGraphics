@@ -6,7 +6,7 @@ Shader "ToonEye"
         [MainTexture] _BaseMap("Base Map", 2D) = "white" {}
         _Exposure("Exposure", Range(1, 10)) = 1
         _MinIntensity("Minium Intensity", Range(0, 1)) = 0.1
-        _HiLightTex("HighLight Tex", 2D) = "white" {}
+        _HiLightTex("HighLight Tex", 2D) = "black" {}
         [Toggle(_)] _HiLightJitter("HighLight Jittering", Float) = 0
         _HiLightPowerR("HighLight Power for R Channel", Range(1, 64)) = 1
         _HiLightPowerG("HighLight Power for G Channel", Range(1, 64)) = 1
