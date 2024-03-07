@@ -260,9 +260,14 @@ Shader "ToonEye"
                 {
                     hiLightPower = lerp(1, hiLightPower, cos(_Time.y * 40) > 0);
                 }
-                color.rgb += (abs(pow(hiLightTexVar.r, hiLightPower.r)) * _HiLightIntensityR * hiLightMultiplier).rrr;
-                color.rgb += (abs(pow(hiLightTexVar.g, hiLightPower.g)) * _HiLightIntensityG * hiLightMultiplier).rrr;
-                color.rgb += (abs(pow(hiLightTexVar.b, hiLightPower.b)) * _HiLightIntensityB * hiLightMultiplier).rrr;
+                half3 hiColor = 0;
+                hiColor += (abs(pow(hiLightTexVar.r, hiLightPower.r)) * _HiLightIntensityR * hiLightMultiplier).rrr;
+                hiColor += (abs(pow(hiLightTexVar.g, hiLightPower.g)) * _HiLightIntensityG * hiLightMultiplier).rrr;
+                hiColor += (abs(pow(hiLightTexVar.b, hiLightPower.b)) * _HiLightIntensityB * hiLightMultiplier).rrr;
+                color.rgb += hiColor;
+
+                // Final composition
+                color.rgb = min(color.rgb, _BaseColor * _BaseMap_var.rgb + hiColor);
 
 #if _MATERIAL_TRANSFORM
                 float4 dissolveColor = MaterialTransformDissolve(mask, transformVal, lerpVal, input.uv, sampler_linear_mirror);
